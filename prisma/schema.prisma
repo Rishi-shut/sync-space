@@ -1,0 +1,211 @@
+// ============================================
+// Sync Space — Database Schema
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User ────────────────────────────────────
+model User {
+  id          String   @id @default(cuid())
+  clerkId     String   @unique
+  email       String   @unique
+  name        String?
+  displayName String?
+  imageUrl    String?
+  bio         String?
+  status      UserStatus @default(ONLINE)
+  theme       String     @default("dark")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  messages          Message[]
+  memberships       ConversationMember[]
+  meetingParticipants MeetingParticipant[]
+  createdMeetings   Meeting[]          @relation("MeetingCreator")
+  reactions         Reaction[]
+  sentFiles         Attachment[]
+
+  @@map("users")
+}
+
+enum UserStatus {
+  ONLINE
+  AWAY
+  BUSY
+  OFFLINE
+}
+
+// ─── Conversation ────────────────────────────
+model Conversation {
+  id        String           @id @default(cuid())
+  name      String?
+  type      ConversationType @default(DIRECT)
+  imageUrl  String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  members  ConversationMember[]
+  messages Message[]
+
+  @@map("conversations")
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+model ConversationMember {
+  id             String     @id @default(cuid())
+  conversationId String
+  userId         String
+  role           MemberRole @default(MEMBER)
+  nickname       String?
+  joinedAt       DateTime   @default(now())
+  lastReadAt     DateTime?
+  isMuted        Boolean    @default(false)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@map("conversation_members")
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// ─── Message ─────────────────────────────────
+model Message {
+  id             String      @id @default(cuid())
+  content        String
+  type           MessageType @default(TEXT)
+  conversationId String
+  senderId       String
+  parentId       String?
+  isEdited       Boolean     @default(false)
+  isDeleted      Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id])
+  parent       Message?     @relation("MessageThread", fields: [parentId], references: [id])
+  replies      Message[]    @relation("MessageThread")
+  reactions    Reaction[]
+  attachments  Attachment[]
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+  AUDIO
+}
+
+// ─── Attachment ──────────────────────────────
+model Attachment {
+  id        String   @id @default(cuid())
+  messageId String
+  uploaderId String
+  name      String
+  url       String
+  mimeType  String
+  size      Int
+  createdAt DateTime @default(now())
+
+  message  Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  uploader User    @relation(fields: [uploaderId], references: [id])
+
+  @@map("attachments")
+}
+
+// ─── Reaction ────────────────────────────────
+model Reaction {
+  id        String   @id @default(cuid())
+  emoji     String
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId, emoji])
+  @@map("reactions")
+}
+
+// ─── Meeting ─────────────────────────────────
+model Meeting {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  code        String        @unique @default(cuid())
+  status      MeetingStatus @default(SCHEDULED)
+  type        MeetingType   @default(VIDEO)
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  endedAt     DateTime?
+  maxParticipants Int       @default(50)
+  isRecording Boolean       @default(false)
+  createdById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  createdBy    User                 @relation("MeetingCreator", fields: [createdById], references: [id])
+  participants MeetingParticipant[]
+
+  @@map("meetings")
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+enum MeetingType {
+  VIDEO
+  VOICE
+  SCREEN_SHARE
+}
+
+model MeetingParticipant {
+  id             String          @id @default(cuid())
+  meetingId      String
+  userId         String
+  role           ParticipantRole @default(PARTICIPANT)
+  isMuted        Boolean         @default(false)
+  isCameraOff    Boolean         @default(false)
+  isScreenSharing Boolean        @default(false)
+  joinedAt       DateTime        @default(now())
+  leftAt         DateTime?
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([meetingId, userId])
+  @@map("meeting_participants")
+}
+
+enum ParticipantRole {
+  HOST
+  CO_HOST
+  PARTICIPANT
+}
