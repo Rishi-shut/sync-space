@@ -51,20 +51,18 @@ export default function Sidebar({ user }: SidebarProps) {
     <motion.aside
       animate={{ width: sidebarCollapsed ? 80 : 280 }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="hidden md:flex flex-col h-screen overflow-hidden select-none border-r border-[#1e2235] bg-[#0a0c14] relative z-20"
+      className="hidden md:flex flex-col h-screen overflow-hidden select-none border-r border-[#17191d] bg-[#08090b] relative z-20"
     >
       {/* Top Brand Logo */}
-      <div className={`p-6 flex items-center justify-between border-b border-[#1e2235]/40 h-20`}>
+      <div className={`p-6 flex items-center justify-between border-b border-[#17191d] h-20`}>
         {!sidebarCollapsed ? (
           <Link href="/dashboard" className="flex items-center gap-3 group">
             <div className="relative">
               <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ background: "var(--gradient-accent)" }}
+                className="w-8 h-8 rounded-lg flex items-center justify-center bg-accent"
               >
                 <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
               </div>
-              <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 glow-accent" />
             </div>
             <span className="text-sm font-bold tracking-tight text-white">
               Sync<span className="text-gradient">Space</span>
@@ -72,7 +70,7 @@ export default function Sidebar({ user }: SidebarProps) {
           </Link>
         ) : (
           <div className="mx-auto">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "var(--gradient-accent)" }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-accent">
               <Zap className="w-4 h-4 text-white" />
             </div>
           </div>
@@ -109,98 +107,98 @@ export default function Sidebar({ user }: SidebarProps) {
               key={item.label}
               href={item.href}
               className={`sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                isActive ? "active font-semibold bg-[rgba(124,92,252,0.12)] text-accent" : "text-[#8b8fa3] hover:bg-[#13152080] hover:text-white"
-              }`}
-            >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              {!sidebarCollapsed && (
-                <span className="text-sm flex-1">{item.label}</span>
-              )}
-              {!sidebarCollapsed && item.badge && (
-                <span className="badge ml-auto">{item.badge}</span>
-              )}
-            </Link>
-          );
-        })}
-
-        {/* DMs Section header */}
-        {!sidebarCollapsed && (
-          <div className="mt-8 pt-4 border-t border-[#1e2235]/40">
-            <p className="px-3 text-xs font-semibold tracking-wider text-[#565b73] uppercase mb-3">
-              Direct Messages
-            </p>
-            <div className="space-y-1">
-              {[
-                { name: "Alex Chen", avatar: "A", status: "online" },
-                { name: "Sarah Kim", avatar: "S", status: "away" },
-                { name: "Team Design", avatar: "T", status: "busy", isGroup: true },
-              ].map((dm) => (
-                <div
-                  key={dm.name}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-[#8b8fa3] hover:bg-[#13152080] hover:text-white cursor-pointer transition-colors"
-                >
-                  <div className="relative flex-shrink-0">
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold bg-[#161925]"
-                      style={{ color: "var(--accent)" }}
-                    >
-                      {dm.avatar}
-                    </div>
-                    <div className={`avatar-status ${dm.status}`} style={{ width: "8px", height: "8px", border: "1.5px solid var(--sidebar-bg)" }} />
-                  </div>
-                  <span className="truncate">{dm.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* User profile footer info */}
-      <div className="p-4 border-t border-[#1e2235]/40 bg-[#07080d]/80 backdrop-blur-md">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="relative flex-shrink-0">
-              <div className="w-9 h-9 rounded-xl overflow-hidden border border-[#1e2235]">
-                {user.imageUrl ? (
-                  <Image
-                    src={user.imageUrl}
-                    alt="User profile"
-                    width={36}
-                    height={36}
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-[#161925] flex items-center justify-center text-sm font-bold text-accent">
-                    {user.displayName?.[0] || "U"}
-                  </div>
-                )}
-              </div>
-              <div className="avatar-status online" style={{ border: "2px solid #07080d" }} />
-            </div>
+                isActive ? "active font-semibold bg-[rgba(79,70,229,0.12)] text-accent" : "text-[#8e939e] hover:bg-[#121316] hover:text-white"
+            }`}
+          >
+            <Icon className="w-5 h-5 flex-shrink-0" />
             {!sidebarCollapsed && (
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-white truncate">
-                  {user.displayName || "User"}
-                </p>
-                <p className="text-xs text-[#8b8fa3] truncate">
-                  {user.email}
-                </p>
-              </div>
+              <span className="text-sm flex-1">{item.label}</span>
             )}
-          </div>
+            {!sidebarCollapsed && item.badge && (
+              <span className="badge ml-auto">{item.badge}</span>
+            )}
+          </Link>
+        );
+      })}
 
+      {/* DMs Section header */}
+      {!sidebarCollapsed && (
+        <div className="mt-8 pt-4 border-t border-[#17191d]">
+          <p className="px-3 text-xs font-semibold tracking-wider text-[#4e525a] uppercase mb-3">
+            Direct Messages
+          </p>
+          <div className="space-y-1">
+            {[
+              { name: "Alex Chen", avatar: "A", status: "online" },
+              { name: "Sarah Kim", avatar: "S", status: "away" },
+              { name: "Team Design", avatar: "T", status: "busy", isGroup: true },
+            ].map((dm) => (
+              <div
+                key={dm.name}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-[#8e939e] hover:bg-[#121316] hover:text-white cursor-pointer transition-colors"
+              >
+                <div className="relative flex-shrink-0">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold bg-[#121316]"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    {dm.avatar}
+                  </div>
+                  <div className={`avatar-status ${dm.status}`} style={{ width: "8px", height: "8px", border: "1.5px solid var(--sidebar-bg)" }} />
+                </div>
+                <span className="truncate">{dm.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+
+    {/* User profile footer info */}
+    <div className="p-4 border-t border-[#17191d] bg-[#0c0d0f]/80 backdrop-blur-md">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="relative flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl overflow-hidden border border-[#17191d]">
+              {user.imageUrl ? (
+                <Image
+                  src={user.imageUrl}
+                  alt="User profile"
+                  width={36}
+                  height={36}
+                  className="object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-[#121316] flex items-center justify-center text-sm font-bold text-accent">
+                  {user.displayName?.[0] || "U"}
+                </div>
+              )}
+            </div>
+            <div className="avatar-status online" style={{ border: "2px solid #08090b" }} />
+          </div>
           {!sidebarCollapsed && (
-            <button
-              onClick={handleLogout}
-              className="p-2 rounded-lg text-[#8b8fa3] hover:text-red-400 hover:bg-red-500/10 transition-colors"
-              title="Sign out"
-            >
-              <Power className="w-4 h-4" />
-            </button>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white truncate">
+                {user.displayName || "User"}
+              </p>
+              <p className="text-xs text-[#8e939e] truncate">
+                {user.email}
+              </p>
+            </div>
           )}
         </div>
+
+        {!sidebarCollapsed && (
+          <button
+            onClick={handleLogout}
+            className="p-2 rounded-lg text-[#8e939e] hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            title="Sign out"
+          >
+            <Power className="w-4 h-4" />
+          </button>
+        )}
       </div>
-    </motion.aside>
+    </div>
+  </motion.aside>
   );
 }

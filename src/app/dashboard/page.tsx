@@ -52,10 +52,7 @@ export default async function DashboardPage() {
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8 select-none">
       {/* Welcome Hero Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-8 rounded-2xl border border-[#1e2235] bg-[#0d0f17]/40 relative overflow-hidden">
-        {/* Glow effect */}
-        <div className="absolute right-0 top-0 w-80 h-80 rounded-full bg-accent opacity-5 blur-3xl pointer-events-none" />
-        
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-8 rounded-2xl border border-[#17191d] bg-[#0f1013] relative overflow-hidden">
         <div className="space-y-1 relative z-10">
           <div className="flex items-center gap-2 text-xs font-semibold text-accent">
             <Sparkles className="w-3.5 h-3.5" />
@@ -64,7 +61,7 @@ export default async function DashboardPage() {
           <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
             {greeting}, {user.displayName || "User"} 👋
           </h2>
-          <p className="text-sm text-[#8b8fa3]">
+          <p className="text-sm text-[#8e939e]">
             Welcome to your communications hub. Set up calls, chat with your team, or prompt the AI.
           </p>
         </div>
@@ -80,10 +77,10 @@ export default async function DashboardPage() {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="p-6 rounded-2xl border border-[#1e2235] bg-[#0f1118]/80 backdrop-blur-sm relative overflow-hidden group hover:border-[#1e2235]/80 transition-all duration-300"
+            className="p-6 rounded-2xl border border-[#17191d] bg-[#0f1013] relative overflow-hidden group hover:border-[#17191d]/80 transition-all duration-300"
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-[#8b8fa3]">{stat.label}</span>
+              <span className="text-xs font-semibold text-[#8e939e]">{stat.label}</span>
               <div className={`p-2 rounded-xl ${stat.bg}`}>
                 <stat.icon className={`w-4 h-4 ${stat.color}`} />
               </div>
@@ -108,7 +105,7 @@ export default async function DashboardPage() {
           <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
             Upcoming Meetings
           </h3>
-          <div className="p-6 rounded-2xl border border-[#1e2235] bg-[#0f1118]/80 backdrop-blur-sm min-h-[160px] flex flex-col justify-between">
+          <div className="p-6 rounded-2xl border border-[#17191d] bg-[#0f1013] min-h-[160px] flex flex-col justify-between">
             {upcomingMeetings.length > 0 ? (
               <div className="space-y-4">
                 {upcomingMeetings.map((meeting) => (
@@ -117,14 +114,14 @@ export default async function DashboardPage() {
                       <Calendar className="w-4 h-4 text-accent mt-0.5" />
                       <div>
                         <p className="text-xs font-semibold text-white">{meeting.title}</p>
-                        <p className="text-[10px] text-[#8b8fa3]">
+                        <p className="text-[10px] text-[#8e939e]">
                           {meeting.scheduledAt ? new Date(meeting.scheduledAt).toLocaleString() : "Scheduled"}
                         </p>
                       </div>
                     </div>
                     <Link
                       href={`/dashboard/meetings/${meeting.code}`}
-                      className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-accent/10 text-accent hover:bg-accent/20 transition-all"
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-[#121316] text-[#f3f4f6] hover:bg-[#17191d] border border-[#17191d] transition-all"
                     >
                       Join
                     </Link>
@@ -132,7 +129,7 @@ export default async function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center text-[#565b73]">
+              <div className="flex-1 flex flex-col items-center justify-center text-center text-[#4e525a]">
                 <Clock className="w-8 h-8 mb-2 opacity-50" />
                 <p className="text-xs">No upcoming meetings</p>
                 <p className="text-[10px] max-w-[180px] mt-1">
