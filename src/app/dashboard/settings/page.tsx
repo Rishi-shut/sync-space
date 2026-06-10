@@ -73,7 +73,7 @@ export default function SettingsPage() {
   return (
     <div className="p-8 max-w-2xl mx-auto space-y-8 select-none">
       <div className="space-y-1">
-        <h2 className="text-xl font-bold text-white tracking-tight">Settings</h2>
+        <h2 className="text-xl font-bold text-foreground tracking-tight">Settings</h2>
         <p className="text-sm text-[#a1a1aa]">
           Manage your profile settings, active presence and workspace theme.
         </p>
@@ -93,62 +93,62 @@ export default function SettingsPage() {
         )}
 
         {/* Profile Card */}
-        <div className="p-6 rounded-2xl border border-[#27272a] bg-[#18181b]/80 backdrop-blur-sm space-y-6">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+        <div className="p-6 rounded-2xl border border-border bg-card space-y-6">
+          <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
             Profile Details
           </h3>
 
           <div className="flex items-center gap-4">
-            <div className="relative w-16 h-16 rounded-full overflow-hidden border border-[#27272a]">
+            <div className="relative w-16 h-16 rounded-full overflow-hidden border border-border">
               {clerkUser?.imageUrl ? (
                 <Image src={clerkUser.imageUrl} alt="Avatar" fill className="object-cover" />
               ) : (
-                <div className="w-full h-full bg-[#27272a] flex items-center justify-center">
+                <div className="w-full h-full bg-background flex items-center justify-center">
                   <UserIcon className="w-6 h-6" style={{ color: "var(--accent)" }} />
                 </div>
               )}
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">Profile Photo</p>
-              <p className="text-[10px] text-[#52525b]">Synced from your login account</p>
+              <p className="text-sm font-semibold text-foreground">Profile Photo</p>
+              <p className="text-[10px] text-[#8e939e]">Synced from your login account</p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-white">Display Name</label>
+            <label className="text-xs font-semibold text-foreground">Display Name</label>
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="input bg-[#0c0c0e] border-[#27272a] text-xs text-white"
+              className="input bg-background border-border text-xs text-foreground"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-white">Bio</label>
+            <label className="text-xs font-semibold text-foreground">Bio</label>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="input bg-[#0c0c0e] border-[#27272a] text-xs text-white min-h-[100px] resize-none py-3"
+              className="input bg-background border-border text-xs text-foreground min-h-[100px] resize-none py-3"
               placeholder="Write a short bio..."
             />
           </div>
         </div>
 
         {/* Preferences Card */}
-        <div className="p-6 rounded-2xl border border-[#27272a] bg-[#18181b]/80 backdrop-blur-sm space-y-6">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+        <div className="p-6 rounded-2xl border border-border bg-card space-y-6">
+          <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
             Workspace Preferences
           </h3>
 
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold text-white">Interface Theme</p>
+              <p className="text-xs font-semibold text-foreground">Interface Theme</p>
               <p className="text-[10px] text-[#a1a1aa]">Choose between light or dark mode theme</p>
             </div>
 
-            <div className="flex bg-[#0c0c0e] border border-[#27272a] rounded-xl p-1">
+            <div className="flex bg-background border border-border rounded-xl p-1">
               {["dark", "light"].map((t) => (
                 <button
                   key={t}
@@ -157,7 +157,7 @@ export default function SettingsPage() {
                   className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-colors ${
                     theme === t
                       ? "bg-accent text-white"
-                      : "text-[#a1a1aa] hover:text-white"
+                      : "text-[#a1a1aa] hover:text-foreground"
                   }`}
                 >
                   {t}

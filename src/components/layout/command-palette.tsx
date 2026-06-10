@@ -64,22 +64,22 @@ export default function CommandPalette() {
             initial={{ opacity: 0, scale: 0.97, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: -8 }}
-            className="w-full max-w-lg rounded-2xl border border-[#27272a] bg-[#18181b] shadow-2xl relative z-10 overflow-hidden"
+            className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl relative z-10 overflow-hidden"
           >
             {/* Search Input box */}
-            <div className="flex items-center gap-3 px-4 border-b border-[#27272a]/60">
-              <Search className="w-4 h-4 text-[#52525b]" />
+            <div className="flex items-center gap-3 px-4 border-b border-border/60">
+              <Search className="w-4 h-4 text-text-muted" />
               <input
                 type="text"
                 placeholder="Type a command or search..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full py-4 bg-transparent text-sm text-white placeholder-[#52525b] outline-none"
+                className="w-full py-4 bg-transparent text-sm text-text-primary placeholder-text-muted outline-none"
                 autoFocus
               />
               <button
                 onClick={() => setCommandPaletteOpen(false)}
-                className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-[#27272a] bg-[#0c0c0e] text-[#52525b]"
+                className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-border bg-bg-secondary text-text-muted"
               >
                 ESC
               </button>
@@ -98,13 +98,13 @@ export default function CommandPalette() {
                           item.action();
                           setCommandPaletteOpen(false);
                         }}
-                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs text-[#a1a1aa] hover:text-white hover:bg-[#27272a] transition-all group"
+                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs text-text-secondary hover:text-text-primary hover:bg-card-hover transition-all group"
                       >
                         <div className="flex items-center gap-3">
-                          <Icon className="w-4 h-4 text-[#52525b] group-hover:text-accent transition-colors" />
+                          <Icon className="w-4 h-4 text-text-muted group-hover:text-accent transition-colors" />
                           <span>{item.label}</span>
                         </div>
-                        <span className="text-[10px] text-[#52525b] group-hover:text-[#a1a1aa] capitalize">
+                        <span className="text-[10px] text-text-muted group-hover:text-text-secondary capitalize">
                           {item.category}
                         </span>
                       </button>
@@ -112,7 +112,7 @@ export default function CommandPalette() {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-8 text-[#52525b] text-xs">
+                <div className="text-center py-8 text-text-muted text-xs">
                   No commands match your query.
                 </div>
               )}

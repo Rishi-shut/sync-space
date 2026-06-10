@@ -59,16 +59,16 @@ export default function Navbar({ user }: NavbarProps) {
   };
 
   return (
-    <header className="h-20 border-b border-[#17191d] flex items-center justify-between px-6 bg-[#08090b]/80 backdrop-blur-md relative z-10 select-none">
+    <header className="h-20 border-b border-border flex items-center justify-between px-6 bg-background/80 backdrop-blur-md relative z-10 select-none">
       {/* Left side: mobile toggle + Page title */}
       <div className="flex items-center gap-4">
         <button
           onClick={toggleSidebar}
-          className="p-2 md:hidden rounded-lg text-[#8e939e] hover:text-white hover:bg-[#121316] transition-colors"
+          className="p-2 md:hidden rounded-lg text-text-secondary hover:text-text-primary hover:bg-sidebar-hover transition-colors"
         >
           <Menu className="w-5 h-5" />
         </button>
-        <h1 className="text-lg font-bold tracking-tight text-white">
+        <h1 className="text-lg font-bold tracking-tight text-text-primary">
           {getHeaderTitle()}
         </h1>
       </div>
@@ -77,13 +77,13 @@ export default function Navbar({ user }: NavbarProps) {
       <div className="hidden sm:block max-w-md w-72 md:w-96">
         <button
           onClick={() => setCommandPaletteOpen(true)}
-          className="w-full flex items-center justify-between px-4 py-2 rounded-xl bg-[#0c0d0f] border border-[#17191d] text-[#4e525a] hover:border-accent/50 hover:text-[#8e939e] transition-all text-sm group"
+          className="w-full flex items-center justify-between px-4 py-2 rounded-xl bg-bg-secondary border border-border text-text-muted hover:border-accent/50 hover:text-text-secondary transition-all text-sm group"
         >
           <div className="flex items-center gap-2.5">
             <Search className="w-4 h-4 group-hover:text-accent transition-colors" />
             <span>Search or command...</span>
           </div>
-          <kbd className="hidden md:inline-flex items-center h-5 select-none pointer-events-none px-1.5 font-mono text-[10px] font-medium text-[#4e525a] bg-[#121316] border border-[#17191d] rounded-md gap-0.5">
+          <kbd className="hidden md:inline-flex items-center h-5 select-none pointer-events-none px-1.5 font-mono text-[10px] font-medium text-text-muted bg-sidebar-hover border border-border rounded-md gap-0.5">
             <span>⌘</span>K
           </kbd>
         </button>
@@ -95,7 +95,7 @@ export default function Navbar({ user }: NavbarProps) {
         <div className="relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#17191d] bg-[#0c0d0f] hover:bg-[#121316] transition-colors text-xs font-semibold text-[#8e939e] hover:text-white"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-bg-secondary hover:bg-sidebar-hover transition-colors text-xs font-semibold text-text-secondary hover:text-text-primary"
           >
             <span className={`w-2.5 h-2.5 rounded-full ${statusColors[status] || "bg-emerald-500"}`} />
             <span className="capitalize">{status.toLowerCase()}</span>
@@ -104,12 +104,12 @@ export default function Navbar({ user }: NavbarProps) {
           {dropdownOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
-              <div className="absolute right-0 mt-2 w-40 rounded-xl border border-[#17191d] bg-[#0f1013] p-1.5 shadow-xl z-50 animate-fadeInUp">
+              <div className="absolute right-0 mt-2 w-40 rounded-xl border border-border bg-card p-1.5 shadow-xl z-50 animate-fadeInUp">
                 {["ONLINE", "AWAY", "BUSY", "OFFLINE"].map((s) => (
                   <button
                     key={s}
                     onClick={() => handleStatusChange(s)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-left rounded-lg text-xs text-[#8e939e] hover:text-white hover:bg-[#121316] transition-colors"
+                    className="w-full flex items-center justify-between px-3 py-2 text-left rounded-lg text-xs text-text-secondary hover:text-text-primary hover:bg-sidebar-hover transition-colors"
                   >
                     <div className="flex items-center gap-2.5">
                       <span className={`w-2 h-2 rounded-full ${statusColors[s]}`} />
@@ -124,7 +124,7 @@ export default function Navbar({ user }: NavbarProps) {
         </div>
 
         {/* Notifications */}
-        <button className="p-2.5 rounded-xl border border-[#17191d] bg-[#0c0d0f] text-[#8e939e] hover:text-white hover:bg-[#121316] transition-colors relative">
+        <button className="p-2.5 rounded-xl border border-border bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-sidebar-hover transition-colors relative">
           <Bell className="w-4 h-4" />
           <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent animate-pulse" />
         </button>
@@ -132,7 +132,7 @@ export default function Navbar({ user }: NavbarProps) {
         {/* Theme Toggle */}
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="p-2.5 rounded-xl border border-[#17191d] bg-[#0c0d0f] text-[#8e939e] hover:text-white hover:bg-[#121316] transition-colors min-w-9 min-h-9 flex items-center justify-center"
+          className="p-2.5 rounded-xl border border-border bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-sidebar-hover transition-colors min-w-9 min-h-9 flex items-center justify-center"
         >
           {!mounted ? (
             <div className="w-4 h-4" />

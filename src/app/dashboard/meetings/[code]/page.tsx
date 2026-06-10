@@ -39,10 +39,51 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
     notFound();
   }
 
+  // Redirect to dashboard if meeting is ended
+  if (meeting.status === "ENDED") {
+    redirect("/dashboard/meetings?ended=true");
+  }
+
+  // Upsert a participant record to mark this user as active in the meeting
+  await db.meetingParticipant.upsert({
+    where: {
+      meetingId_userId: {
+        meetingId: meeting.id,
+        userId: user.id,
+      },
+    },
+    update: {
+      leftAt: null,
+    },
+    create: {
+      meetingId: meeting.id,
+      userId: user.id,
+      role: meeting.createdById === user.id ? "HOST" : "PARTICIPANT",
+    },
+  });
+
+  // Fetch all active participants currently in this meeting
+  const activeParticipants = await db.meetingParticipant.findMany({
+    where: {
+      meetingId: meeting.id,
+      leftAt: null,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          displayName: true,
+          imageUrl: true,
+        },
+      },
+    },
+  });
+
   return (
     <MeetingRoomClient
       user={JSON.parse(JSON.stringify(user))}
       meeting={JSON.parse(JSON.stringify(meeting))}
+      initialParticipants={JSON.parse(JSON.stringify(activeParticipants.map(ap => ap.user)))}
     />
   );
 }

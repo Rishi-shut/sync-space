@@ -58,3 +58,125 @@ export async function POST(req: Request) {
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
+
+export async function PATCH(req: Request) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const dbUser = await db.user.findUnique({
+      where: { clerkId: userId },
+    });
+
+    if (!dbUser) {
+      return new NextResponse("User not found in local DB", { status: 404 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const { code, status } = body;
+
+    if (!code || !status) {
+      return new NextResponse("Meeting code and status required", { status: 400 });
+    }
+
+    const meeting = await db.meeting.findUnique({
+      where: { code },
+    });
+
+    if (!meeting) {
+      return new NextResponse("Meeting not found", { status: 404 });
+    }
+
+    // Voluntarily leaving the meeting
+    if (status === "LEFT") {
+      await db.meetingParticipant.updateMany({
+        where: {
+          meetingId: meeting.id,
+          userId: dbUser.id,
+          leftAt: null,
+        },
+        data: {
+          leftAt: new Date(),
+        },
+      });
+      return NextResponse.json({ success: true });
+    }
+
+    // Only host can end the meeting
+    if (meeting.createdById !== dbUser.id) {
+      return new NextResponse("Forbidden: Only host can end meeting", { status: 403 });
+    }
+
+    const updatedMeeting = await db.meeting.update({
+      where: { code },
+      data: {
+        status: status as MeetingStatus,
+        endedAt: status === MeetingStatus.ENDED ? new Date() : null,
+      },
+    });
+
+    if (status === MeetingStatus.ENDED) {
+      await db.meetingParticipant.updateMany({
+        where: {
+          meetingId: meeting.id,
+          leftAt: null,
+        },
+        data: {
+          leftAt: new Date(),
+        },
+      });
+    }
+
+    return NextResponse.json(updatedMeeting);
+  } catch (error) {
+    console.error("[MEETING_PATCH_ERROR]", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}
+
+export async function GET(req: Request) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const code = searchParams.get("code");
+
+    if (!code) {
+      return new NextResponse("Meeting code is required", { status: 400 });
+    }
+
+    const meeting = await db.meeting.findUnique({
+      where: { code },
+      include: {
+        participants: {
+          where: {
+            leftAt: null,
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                imageUrl: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!meeting) {
+      return new NextResponse("Meeting not found", { status: 404 });
+    }
+
+    return NextResponse.json(meeting);
+  } catch (error) {
+    console.error("[MEETING_GET_ERROR]", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}

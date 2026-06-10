@@ -49,6 +49,7 @@ export default function ChatWindowClient({
   conversation,
   initialMessages,
 }: ChatWindowClientProps) {
+  const [mounted, setMounted] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -58,6 +59,10 @@ export default function ChatWindowClient({
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
@@ -114,12 +119,12 @@ export default function ChatWindowClient({
   const displayName = isDirect ? partner?.displayName || "User" : conversation.name || "Group Chat";
 
   return (
-    <div className="flex flex-col h-full bg-[#0c0c0e] select-none">
+    <div className="flex flex-col h-full bg-background select-none">
       {/* Top Header Panel */}
-      <div className="h-16 px-6 border-b border-[#1f1f23]/60 flex items-center justify-between bg-[#09090b]">
+      <div className="h-16 px-6 border-b border-border flex items-center justify-between bg-card">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#27272a] relative">
+            <div className="w-8 h-8 rounded-lg overflow-hidden border border-border relative">
               {isDirect && partner?.imageUrl ? (
                 <Image
                   src={partner.imageUrl}
@@ -128,7 +133,7 @@ export default function ChatWindowClient({
                   className="object-cover"
                 />
               ) : (
-                <div className="w-full h-full bg-[#18181b] flex items-center justify-center text-xs font-bold text-accent">
+                <div className="w-full h-full bg-background flex items-center justify-center text-xs font-bold text-accent">
                   {displayName[0]}
                 </div>
               )}
@@ -139,7 +144,7 @@ export default function ChatWindowClient({
                 style={{
                   width: "8px",
                   height: "8px",
-                  border: "1.5px solid #09090b",
+                  border: "1.5px solid var(--card)",
                   bottom: -1,
                   right: -1,
                 }}
@@ -147,9 +152,9 @@ export default function ChatWindowClient({
             )}
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-white">{displayName}</h3>
+            <h3 className="text-xs font-semibold text-foreground">{displayName}</h3>
             {isDirect && partner?.status && (
-              <span className="text-[9px] text-[#52525b] capitalize">
+              <span className="text-[9px] text-text-secondary capitalize">
                 {partner.status.toLowerCase()}
               </span>
             )}
@@ -161,7 +166,9 @@ export default function ChatWindowClient({
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.map((msg) => {
           const isOwn = msg.senderId === userId;
-          const timeLabel = formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true });
+          const timeLabel = mounted
+            ? formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })
+            : "";
 
           return (
             <div
@@ -170,7 +177,7 @@ export default function ChatWindowClient({
             >
               {/* Sender Avatar */}
               {!isOwn && (
-                <div className="w-7 h-7 rounded-lg overflow-hidden border border-[#27272a] relative flex-shrink-0 mt-1">
+                <div className="w-7 h-7 rounded-lg overflow-hidden border border-border relative flex-shrink-0 mt-1">
                   {msg.sender.imageUrl ? (
                     <Image
                       src={msg.sender.imageUrl}
@@ -179,7 +186,7 @@ export default function ChatWindowClient({
                       className="object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-[#18181b] flex items-center justify-center text-[10px] font-bold text-accent">
+                    <div className="w-full h-full bg-background flex items-center justify-center text-[10px] font-bold text-accent">
                       {msg.sender.displayName?.[0] || "U"}
                     </div>
                   )}
@@ -189,7 +196,7 @@ export default function ChatWindowClient({
               {/* Message Bubble Container */}
               <div className="space-y-1">
                 {!isOwn && (
-                  <span className="text-[10px] font-medium text-[#a1a1aa] block px-1">
+                  <span className="text-[10px] font-medium text-text-secondary block px-1">
                     {msg.sender.displayName || "User"}
                   </span>
                 )}
@@ -197,12 +204,12 @@ export default function ChatWindowClient({
                   className={`p-3 rounded-2xl text-xs leading-relaxed break-words ${
                     isOwn
                       ? "bg-accent text-white rounded-tr-none"
-                      : "bg-[#18181b] border border-[#27272a] text-white rounded-tl-none"
+                      : "bg-card border border-border text-foreground rounded-tl-none"
                   }`}
                 >
                   {msg.content}
                 </div>
-                <span className="text-[8px] text-[#52525b] block px-1 text-right">
+                <span className="text-[8px] text-text-secondary block px-1 text-right">
                   {timeLabel}
                 </span>
               </div>
@@ -213,13 +220,13 @@ export default function ChatWindowClient({
       </div>
 
       {/* Text Message Input Panel */}
-      <form onSubmit={handleSend} className="p-4 bg-[#09090b] border-t border-[#1f1f23]/60 flex gap-2">
+      <form onSubmit={handleSend} className="p-4 bg-card border-t border-border flex gap-2">
         <input
           type="text"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Type your message..."
-          className="flex-1 input bg-[#0c0c0e] border-[#27272a] text-xs py-2 text-white"
+          className="flex-1 input bg-background border-border text-xs py-2 text-foreground"
           required
         />
         <button

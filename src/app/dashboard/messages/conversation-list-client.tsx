@@ -131,16 +131,16 @@ export default function ConversationListClient({ userId }: ConversationListClien
   });
 
   return (
-    <div className="w-80 h-full border-r border-[#1f1f23] bg-[#09090b] flex flex-col relative z-10 select-none">
+    <div className="w-80 h-full border-r border-border bg-background flex flex-col relative z-10 select-none">
       {/* Header with Search and New Chat button */}
-      <div className="p-4 space-y-3 border-b border-[#1f1f23]/60">
+      <div className="p-4 space-y-3 border-b border-border/60">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-white uppercase tracking-wider">
+          <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider">
             Chats
           </h2>
           <button
             onClick={openNewChatModal}
-            className="p-1.5 rounded-lg border border-[#27272a] bg-[#18181b] text-[#a1a1aa] hover:text-white hover:bg-[#27272a] transition-all"
+            className="p-1.5 rounded-lg border border-border bg-card text-text-secondary hover:text-text-primary hover:bg-card-hover transition-all"
             title="New Direct Message"
           >
             <Plus className="w-4 h-4" />
@@ -148,13 +148,13 @@ export default function ConversationListClient({ userId }: ConversationListClien
         </div>
 
         <div className="relative">
-          <Search className="w-4 h-4 text-[#52525b] absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-text-muted absolute left-3 top-2.5" />
           <input
             type="text"
             placeholder="Search chats..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 rounded-xl bg-[#0c0c0e] border border-[#27272a] text-xs text-white placeholder-[#52525b] outline-none focus:border-accent/50 transition-colors"
+            className="w-full pl-9 pr-4 py-1.5 rounded-xl bg-bg-secondary border border-border text-xs text-text-primary placeholder-text-muted outline-none focus:border-accent/50 transition-colors"
           />
         </div>
       </div>
@@ -164,11 +164,11 @@ export default function ConversationListClient({ userId }: ConversationListClien
         {isLoading ? (
           <div className="space-y-2 p-1">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-[#18181b]/30 animate-pulse">
-                <div className="w-9 h-9 rounded-lg bg-[#27272a]/60" />
+              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-card/30 animate-pulse">
+                <div className="w-9 h-9 rounded-lg bg-card-hover/60" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-3 bg-[#27272a]/60 rounded w-2/3" />
-                  <div className="h-2 bg-[#27272a]/40 rounded w-1/2" />
+                  <div className="h-3 bg-card-hover/60 rounded w-2/3" />
+                  <div className="h-2 bg-card-hover/40 rounded w-1/2" />
                 </div>
               </div>
             ))}
@@ -187,29 +187,29 @@ export default function ConversationListClient({ userId }: ConversationListClien
                 key={convo.id}
                 onClick={() => router.push(`/dashboard/messages/${convo.id}`)}
                 className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left ${
-                  isActive ? "bg-[#27272a] text-white" : "text-[#a1a1aa] hover:bg-[#18181b] hover:text-white"
+                  isActive ? "bg-sidebar-active text-text-primary border border-border" : "text-text-secondary hover:bg-card-hover hover:text-text-primary"
                 }`}
               >
                 <div className="relative flex-shrink-0">
-                  <div className="w-9 h-9 rounded-lg overflow-hidden border border-[#27272a] relative">
+                  <div className="w-9 h-9 rounded-lg overflow-hidden border border-border relative">
                     {imageUrl ? (
                       <Image src={imageUrl} alt={displayName} fill className="object-cover" />
                     ) : (
-                      <div className="w-full h-full bg-[#18181b] flex items-center justify-center text-xs font-bold text-accent">
+                      <div className="w-full h-full bg-card-hover flex items-center justify-center text-xs font-bold text-accent">
                         {displayName[0]}
                       </div>
                     )}
                   </div>
                   {status && (
-                    <div className={`avatar-status ${status.toLowerCase()}`} style={{ border: "2px solid #09090b", bottom: -2, right: -2 }} />
+                    <div className={`avatar-status ${status.toLowerCase()}`} style={{ border: "2px solid var(--sidebar-bg)", bottom: -2, right: -2 }} />
                   )}
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold truncate text-white">{displayName}</span>
+                    <span className="text-xs font-semibold truncate text-text-primary">{displayName}</span>
                   </div>
-                  <p className="text-[10px] text-[#52525b] truncate mt-0.5">
+                  <p className="text-[10px] text-text-muted truncate mt-0.5">
                     {lastMessage}
                   </p>
                 </div>
@@ -217,7 +217,7 @@ export default function ConversationListClient({ userId }: ConversationListClien
             );
           })
         ) : (
-          <div className="text-center py-12 text-[#52525b]">
+          <div className="text-center py-12 text-text-muted">
             <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
             <p className="text-xs">No active chats</p>
             <p className="text-[10px] mt-1 px-4">Click the plus icon above to start a new chat.</p>
@@ -240,16 +240,16 @@ export default function ConversationListClient({ userId }: ConversationListClien
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="absolute left-4 right-4 bottom-4 top-20 md:top-auto md:bottom-auto md:left-1/2 md:-translate-x-1/2 md:w-96 rounded-2xl border border-[#27272a] bg-[#18181b] p-6 shadow-2xl z-40 flex flex-col max-h-[400px]"
+              className="absolute left-4 right-4 bottom-4 top-20 md:top-auto md:bottom-auto md:left-1/2 md:-translate-x-1/2 md:w-96 rounded-2xl border border-border bg-card p-6 shadow-2xl z-40 flex flex-col max-h-[400px]"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-[#27272a]/60">
+              <div className="flex items-center justify-between pb-3 border-b border-border/60">
                 <div className="flex items-center gap-2">
                   <UserPlus className="w-4 h-4 text-accent" />
-                  <h3 className="text-sm font-semibold text-white">New Direct Message</h3>
+                  <h3 className="text-sm font-semibold text-text-primary">New Direct Message</h3>
                 </div>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="p-1 rounded-lg hover:bg-[#27272a] text-[#a1a1aa] hover:text-white transition-colors"
+                  className="p-1 rounded-lg hover:bg-card-hover text-text-secondary hover:text-text-primary transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -262,30 +262,30 @@ export default function ConversationListClient({ userId }: ConversationListClien
                       key={user.id}
                       onClick={() => handleStartChat(user.id)}
                       disabled={isCreating}
-                      className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-[#27272a] transition-all text-left group"
+                      className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-card-hover transition-all text-left group"
                     >
                       <div className="relative flex-shrink-0">
-                        <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#27272a] relative">
+                        <div className="w-8 h-8 rounded-lg overflow-hidden border border-border relative">
                           {user.imageUrl ? (
                             <Image src={user.imageUrl} alt={user.displayName || ""} fill className="object-cover" />
                           ) : (
-                            <div className="w-full h-full bg-[#27272a] flex items-center justify-center text-xs font-bold text-accent">
+                            <div className="w-full h-full bg-card-hover flex items-center justify-center text-xs font-bold text-accent">
                               {user.displayName?.[0] || "U"}
                             </div>
                           )}
                         </div>
-                        <div className={`avatar-status ${user.status.toLowerCase()}`} style={{ border: "2px solid #18181b", width: "8px", height: "8px" }} />
+                        <div className={`avatar-status ${user.status.toLowerCase()}`} style={{ border: "2px solid var(--card)", width: "8px", height: "8px" }} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-white truncate group-hover:text-accent transition-colors">
+                        <p className="text-xs font-semibold text-text-primary truncate group-hover:text-accent transition-colors">
                           {user.displayName || "User"}
                         </p>
-                        <p className="text-[10px] text-[#52525b] truncate">{user.email}</p>
+                        <p className="text-[10px] text-text-muted truncate">{user.email}</p>
                       </div>
                     </button>
                   ))
                 ) : (
-                  <div className="text-center py-8 text-[#52525b]">
+                  <div className="text-center py-8 text-text-muted">
                     <p className="text-xs">No other users found</p>
                     <p className="text-[10px] mt-1">Invite colleagues to your space to start syncing.</p>
                   </div>

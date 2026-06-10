@@ -38,6 +38,47 @@ export async function POST() {
       },
     });
 
+    // Ensure Sync Assistant bot user is seeded in local DB
+    const botId = "sync-assistant-bot";
+    const botUser = await db.user.upsert({
+      where: { clerkId: botId },
+      update: {},
+      create: {
+        clerkId: botId,
+        email: "assistant@syncspace.io",
+        name: "Sync Assistant",
+        displayName: "Sync Assistant",
+        imageUrl: null,
+        status: "ONLINE",
+        bio: "Your AI companion. Ask me anything!",
+      },
+    });
+
+    // Automatically establish a default DM with the assistant bot if it does not exist
+    const existingConvo = await db.conversation.findFirst({
+      where: {
+        type: "DIRECT",
+        AND: [
+          { members: { some: { userId: user.id } } },
+          { members: { some: { userId: botUser.id } } },
+        ],
+      },
+    });
+
+    if (!existingConvo) {
+      await db.conversation.create({
+        data: {
+          type: "DIRECT",
+          members: {
+            create: [
+              { userId: user.id, role: "OWNER" },
+              { userId: botUser.id, role: "MEMBER" },
+            ],
+          },
+        },
+      });
+    }
+
     return NextResponse.json(user);
   } catch (error) {
     console.error("[USER_SYNC_ERROR]", error);

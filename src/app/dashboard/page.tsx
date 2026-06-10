@@ -52,16 +52,16 @@ export default async function DashboardPage() {
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8 select-none">
       {/* Welcome Hero Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-8 rounded-2xl border border-[#17191d] bg-[#0f1013] relative overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-8 rounded-2xl border border-border bg-card relative overflow-hidden">
         <div className="space-y-1 relative z-10">
           <div className="flex items-center gap-2 text-xs font-semibold text-accent">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Workspace Sync Active</span>
           </div>
-          <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-text-primary tracking-tight">
             {greeting}, {user.displayName || "User"} 👋
           </h2>
-          <p className="text-sm text-[#8e939e]">
+          <p className="text-sm text-text-secondary">
             Welcome to your communications hub. Set up calls, chat with your team, or prompt the AI.
           </p>
         </div>
@@ -77,15 +77,15 @@ export default async function DashboardPage() {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="p-6 rounded-2xl border border-[#17191d] bg-[#0f1013] relative overflow-hidden group hover:border-[#17191d]/80 transition-all duration-300"
+            className="p-6 rounded-2xl border border-border bg-card relative overflow-hidden group hover:border-border/80 transition-all duration-300"
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-[#8e939e]">{stat.label}</span>
+              <span className="text-xs font-semibold text-text-secondary">{stat.label}</span>
               <div className={`p-2 rounded-xl ${stat.bg}`}>
                 <stat.icon className={`w-4 h-4 ${stat.color}`} />
               </div>
             </div>
-            <div className="text-3xl font-black text-white">{stat.value}</div>
+            <div className="text-3xl font-black text-text-primary">{stat.value}</div>
           </div>
         ))}
       </div>
@@ -94,7 +94,7 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Quick Actions Panel */}
         <div className="md:col-span-2 space-y-4">
-          <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
+          <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider">
             Quick Actions
           </h3>
           <MeetingActionsClient />
@@ -102,10 +102,10 @@ export default async function DashboardPage() {
 
         {/* Upcoming Meetings List */}
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
+          <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider">
             Upcoming Meetings
           </h3>
-          <div className="p-6 rounded-2xl border border-[#17191d] bg-[#0f1013] min-h-[160px] flex flex-col justify-between">
+          <div className="p-6 rounded-2xl border border-border bg-card min-h-[160px] flex flex-col justify-between">
             {upcomingMeetings.length > 0 ? (
               <div className="space-y-4">
                 {upcomingMeetings.map((meeting) => (
@@ -113,15 +113,15 @@ export default async function DashboardPage() {
                     <div className="flex gap-2">
                       <Calendar className="w-4 h-4 text-accent mt-0.5" />
                       <div>
-                        <p className="text-xs font-semibold text-white">{meeting.title}</p>
-                        <p className="text-[10px] text-[#8e939e]">
+                        <p className="text-xs font-semibold text-text-primary">{meeting.title}</p>
+                        <p className="text-[10px] text-text-secondary">
                           {meeting.scheduledAt ? new Date(meeting.scheduledAt).toLocaleString() : "Scheduled"}
                         </p>
                       </div>
                     </div>
                     <Link
                       href={`/dashboard/meetings/${meeting.code}`}
-                      className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-[#121316] text-[#f3f4f6] hover:bg-[#17191d] border border-[#17191d] transition-all"
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-bg-secondary text-text-primary hover:bg-sidebar-hover border border-border transition-all"
                     >
                       Join
                     </Link>
@@ -129,7 +129,7 @@ export default async function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center text-[#4e525a]">
+              <div className="flex-1 flex flex-col items-center justify-center text-center text-text-muted">
                 <Clock className="w-8 h-8 mb-2 opacity-50" />
                 <p className="text-xs">No upcoming meetings</p>
                 <p className="text-[10px] max-w-[180px] mt-1">

@@ -42,10 +42,10 @@ export default function MeetingActionsClient() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* Start Instant Meeting */}
-      <div className="p-6 rounded-2xl border border-[#1e2235] bg-[#0f1118]/80 backdrop-blur-sm flex flex-col justify-between min-h-[160px] group hover:border-[var(--accent)]/40 transition-all duration-300">
+      <div className="p-6 rounded-2xl border border-border bg-card/80 backdrop-blur-sm flex flex-col justify-between min-h-[160px] group hover:border-accent/40 transition-all duration-300">
         <div>
-          <h3 className="text-sm font-semibold text-white mb-1">Instant Meeting</h3>
-          <p className="text-xs text-[#8b8fa3]">
+          <h3 className="text-sm font-semibold text-text-primary mb-1">Instant Meeting</h3>
+          <p className="text-xs text-text-secondary">
             Start an HD video conference with screensharing and direct link invitations.
           </p>
         </div>
@@ -69,11 +69,11 @@ export default function MeetingActionsClient() {
       {/* Join with Code */}
       <form
         onSubmit={handleJoinMeeting}
-        className="p-6 rounded-2xl border border-[#1e2235] bg-[#0f1118]/80 backdrop-blur-sm flex flex-col justify-between min-h-[160px] group hover:border-[var(--accent)]/40 transition-all duration-300"
+        className="p-6 rounded-2xl border border-border bg-card/80 backdrop-blur-sm flex flex-col justify-between min-h-[160px] group hover:border-accent/40 transition-all duration-300"
       >
         <div>
-          <h3 className="text-sm font-semibold text-white mb-1">Join with Code</h3>
-          <p className="text-xs text-[#8b8fa3]">
+          <h3 className="text-sm font-semibold text-text-primary mb-1">Join with Code</h3>
+          <p className="text-xs text-text-secondary">
             Enter a room invite code (e.g. abc-defg-hij) to jump right in.
           </p>
         </div>
@@ -84,7 +84,7 @@ export default function MeetingActionsClient() {
             placeholder="Room code"
             value={roomCode}
             onChange={(e) => setRoomCode(e.target.value)}
-            className="flex-1 input text-xs py-2 bg-[#07080d] border-[#1e2235] text-white"
+            className="flex-1 input text-xs py-2 bg-background border-border text-text-primary"
             required
           />
           <button

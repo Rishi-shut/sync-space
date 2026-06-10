@@ -27,7 +27,7 @@ export default async function MessagesLayout({
       <ConversationListClient userId={dbUser.id} />
 
       {/* Main chat viewport */}
-      <div className="flex-1 h-full overflow-hidden bg-[#0c0c0e]">
+      <div className="flex-1 h-full overflow-hidden bg-background">
         {children}
       </div>
     </div>

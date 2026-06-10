@@ -28,6 +28,7 @@ interface MeetingInfo {
   title: string;
   code: string;
   type: string;
+  createdById: string;
   createdBy: {
     displayName: string | null;
   };
@@ -36,9 +37,14 @@ interface MeetingInfo {
 interface MeetingRoomClientProps {
   user: UserInfo;
   meeting: MeetingInfo;
+  initialParticipants: UserInfo[];
 }
 
-export default function MeetingRoomClient({ user, meeting }: MeetingRoomClientProps) {
+export default function MeetingRoomClient({
+  user,
+  meeting,
+  initialParticipants,
+}: MeetingRoomClientProps) {
   const router = useRouter();
 
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -48,6 +54,7 @@ export default function MeetingRoomClient({ user, meeting }: MeetingRoomClientPr
   const [screenSharing, setScreenSharing] = useState(false);
   const [joined, setJoined] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeParticipants, setActiveParticipants] = useState<UserInfo[]>(initialParticipants);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const screenVideoRef = useRef<HTMLVideoElement>(null);
@@ -95,6 +102,38 @@ export default function MeetingRoomClient({ user, meeting }: MeetingRoomClientPr
       screenVideoRef.current.srcObject = screenStream;
     }
   }, [screenSharing, screenStream]);
+
+  // Polling to check if meeting status becomes ENDED, and tracking active participants list
+  useEffect(() => {
+    if (!joined) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/meetings?code=${meeting.code}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === "ENDED") {
+            // Stop media streams
+            if (localStream) {
+              localStream.getTracks().forEach((track) => track.stop());
+            }
+            if (screenStream) {
+              screenStream.getTracks().forEach((track) => track.stop());
+            }
+            router.push("/dashboard/meetings?ended=true");
+          } else {
+            // Update active participants list
+            const participantsList = data.participants.map((p: any) => p.user);
+            setActiveParticipants(participantsList);
+          }
+        }
+      } catch (err) {
+        console.error("Error polling meeting state:", err);
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [joined, meeting.code, localStream, screenStream, router]);
 
   const toggleMic = () => {
     if (localStream) {
@@ -148,7 +187,18 @@ export default function MeetingRoomClient({ user, meeting }: MeetingRoomClientPr
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleLeave = () => {
+  const handleLeave = async () => {
+    // Notify DB that we are voluntarily leaving the participant list
+    try {
+      await fetch("/api/meetings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: meeting.code, status: "LEFT" }),
+      });
+    } catch (err) {
+      console.error("Failed to notify leave:", err);
+    }
+
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop());
     }
@@ -156,6 +206,21 @@ export default function MeetingRoomClient({ user, meeting }: MeetingRoomClientPr
       screenStream.getTracks().forEach((track) => track.stop());
     }
     router.push("/dashboard/meetings");
+  };
+
+  const handleEndMeeting = async () => {
+    try {
+      const res = await fetch("/api/meetings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: meeting.code, status: "ENDED" }),
+      });
+      if (res.ok) {
+        handleLeave();
+      }
+    } catch (err) {
+      console.error("Failed to end meeting:", err);
+    }
   };
 
   // ─── Render: Lobby Screen ───────────────────
@@ -290,8 +355,8 @@ export default function MeetingRoomClient({ user, meeting }: MeetingRoomClientPr
             </div>
             
             {/* Sidebar list for webcam streams */}
-            <div className="col-span-1 flex flex-col gap-4">
-              <div className="aspect-video rounded-xl overflow-hidden border border-[#27272a] bg-[#18181b] relative">
+            <div className="col-span-1 flex flex-col gap-4 overflow-y-auto max-h-[500px]">
+              <div className="aspect-video rounded-xl overflow-hidden border border-[#27272a] bg-[#18181b] relative flex-shrink-0">
                 {camActive ? (
                   <video
                     ref={localVideoRef}
@@ -312,25 +377,36 @@ export default function MeetingRoomClient({ user, meeting }: MeetingRoomClientPr
                 </div>
               </div>
 
-              {/* Mock participants */}
-              {[{ name: "Sarah Kim", label: "S" }, { name: "Alex Chen", label: "A" }].map((peer) => (
-                <div
-                  key={peer.name}
-                  className="aspect-video rounded-xl overflow-hidden border border-[#27272a] bg-[#18181b] flex items-center justify-center relative"
-                >
-                  <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 text-sm font-semibold">
-                    {peer.label}
+              {/* Real participants */}
+              {activeParticipants
+                .filter((peer) => peer.id !== user.id)
+                .map((peer) => (
+                  <div
+                    key={peer.id}
+                    className="aspect-video rounded-xl overflow-hidden border border-[#27272a] bg-[#18181b] flex items-center justify-center relative flex-shrink-0"
+                  >
+                    {peer.imageUrl ? (
+                      <Image
+                        src={peer.imageUrl}
+                        alt={peer.displayName || "User"}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 text-sm font-semibold">
+                        {peer.displayName?.[0] || "U"}
+                      </div>
+                    )}
+                    <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[8px] text-white truncate max-w-[80px]">
+                      {peer.displayName || "User"}
+                    </div>
                   </div>
-                  <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[8px] text-white truncate max-w-[80px]">
-                    {peer.name}
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         ) : (
           // Standard Calling grid layout
-          <div className="w-full h-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl max-h-[500px]">
+          <div className="w-full h-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl max-h-[500px] overflow-y-auto">
             {/* User stream card */}
             <div className="aspect-video rounded-2xl overflow-hidden border border-[#27272a] bg-[#18181b] relative group">
               {camActive ? (
@@ -349,29 +425,35 @@ export default function MeetingRoomClient({ user, meeting }: MeetingRoomClientPr
                 </div>
               )}
               <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/5 text-[9px] text-white">
-                {user.displayName || "You"} (Host)
+                {user.displayName || "You"} {meeting.createdById === user.id && "(Host)"}
               </div>
             </div>
 
-            {/* Mock Participant 2 */}
-            <div className="aspect-video rounded-2xl overflow-hidden border border-[#27272a] bg-[#18181b] flex items-center justify-center relative">
-              <div className="w-14 h-14 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-lg font-bold">
-                S
-              </div>
-              <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/5 text-[9px] text-white">
-                Sarah Kim
-              </div>
-            </div>
-
-            {/* Mock Participant 3 */}
-            <div className="aspect-video rounded-2xl overflow-hidden border border-[#27272a] bg-[#18181b] flex items-center justify-center relative">
-              <div className="w-14 h-14 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 text-lg font-bold">
-                A
-              </div>
-              <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/5 text-[9px] text-white">
-                Alex Chen
-              </div>
-            </div>
+            {/* Real participants */}
+            {activeParticipants
+              .filter((peer) => peer.id !== user.id)
+              .map((peer) => (
+                <div
+                  key={peer.id}
+                  className="aspect-video rounded-2xl overflow-hidden border border-[#27272a] bg-[#18181b] flex items-center justify-center relative"
+                >
+                  {peer.imageUrl ? (
+                    <Image
+                      src={peer.imageUrl}
+                      alt={peer.displayName || "User"}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 text-lg font-bold">
+                      {peer.displayName?.[0] || "U"}
+                    </div>
+                  )}
+                  <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/5 text-[9px] text-white">
+                    {peer.displayName || "User"} {meeting.createdById === peer.id && "(Host)"}
+                  </div>
+                </div>
+              ))}
           </div>
         )}
       </div>
@@ -417,11 +499,22 @@ export default function MeetingRoomClient({ user, meeting }: MeetingRoomClientPr
 
           <button
             onClick={handleLeave}
-            className="p-3 rounded-full bg-rose-600 text-white hover:bg-rose-700 transition-all border border-rose-500/20"
+            className="p-3 rounded-full border border-[#27272a] bg-[#18181b] text-[#a1a1aa] hover:text-white hover:bg-[#27272a] transition-all"
             title="Leave Meeting"
           >
             <PhoneOff className="w-5 h-5" />
           </button>
+
+          {meeting.createdById === user.id && (
+            <button
+              onClick={handleEndMeeting}
+              className="p-3 rounded-full bg-rose-600 text-white hover:bg-rose-700 transition-all border border-rose-500/20 flex items-center justify-center gap-1.5 px-4"
+              title="End Meeting for Everyone"
+            >
+              <PhoneOff className="w-5 h-5 animate-pulse" />
+              <span className="text-xs font-semibold">End Meeting</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
