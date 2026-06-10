@@ -3,15 +3,17 @@ import { SignUp } from "@clerk/nextjs";
 export default function SignUpPage() {
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      {/* Animated background */}
-      <div className="fixed inset-0 pointer-events-none z-0">
+      {/* Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 bg-[#09090b]">
         <div
-          className="orb orb-accent"
-          style={{ width: "500px", height: "500px", top: "-15%", left: "-10%" }}
-        />
-        <div
-          className="orb orb-cyan"
-          style={{ width: "400px", height: "400px", bottom: "-10%", right: "-5%", animationDelay: "-5s" }}
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `
+              linear-gradient(var(--text-muted) 1px, transparent 1px),
+              linear-gradient(90deg, var(--text-muted) 1px, transparent 1px)
+            `,
+            backgroundSize: "80px 80px",
+          }}
         />
       </div>
 

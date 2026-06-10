@@ -26,49 +26,16 @@ import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
 // ─── Animated Background ────────────────────
 function AnimatedBackground() {
   return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      {/* Main accent orb */}
-      <div
-        className="orb orb-accent"
-        style={{
-          width: "600px",
-          height: "600px",
-          top: "-10%",
-          right: "-5%",
-          animationDelay: "0s",
-        }}
-      />
-      {/* Cyan orb */}
-      <div
-        className="orb orb-cyan"
-        style={{
-          width: "500px",
-          height: "500px",
-          bottom: "10%",
-          left: "-10%",
-          animationDelay: "-7s",
-        }}
-      />
-      {/* Warm orb */}
-      <div
-        className="orb orb-warm"
-        style={{
-          width: "400px",
-          height: "400px",
-          top: "50%",
-          right: "30%",
-          animationDelay: "-14s",
-        }}
-      />
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 bg-[#09090b]">
       {/* Grid overlay */}
       <div
-        className="absolute inset-0 opacity-[0.015]"
+        className="absolute inset-0 opacity-[0.03]"
         style={{
           backgroundImage: `
             linear-gradient(var(--text-muted) 1px, transparent 1px),
             linear-gradient(90deg, var(--text-muted) 1px, transparent 1px)
           `,
-          backgroundSize: "60px 60px",
+          backgroundSize: "80px 80px",
         }}
       />
     </div>
@@ -77,48 +44,7 @@ function AnimatedBackground() {
 
 // ─── Floating Particles ─────────────────────
 function Particles() {
-  const [particles, setParticles] = useState<
-    { id: number; x: number; y: number; size: number; delay: number }[]
-  >([]);
-
-  useEffect(() => {
-    const p = Array.from({ length: 30 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 3 + 1,
-      delay: Math.random() * 5,
-    }));
-    setParticles(p);
-  }, []);
-
-  return (
-    <div className="fixed inset-0 pointer-events-none z-0">
-      {particles.map((p) => (
-        <motion.div
-          key={p.id}
-          className="absolute rounded-full"
-          style={{
-            left: `${p.x}%`,
-            top: `${p.y}%`,
-            width: p.size,
-            height: p.size,
-            background: "var(--accent)",
-          }}
-          animate={{
-            y: [-20, 20, -20],
-            opacity: [0.1, 0.4, 0.1],
-          }}
-          transition={{
-            duration: 4 + Math.random() * 3,
-            repeat: Infinity,
-            delay: p.delay,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
-    </div>
-  );
+  return null;
 }
 
 // ─── Navbar ─────────────────────────────────

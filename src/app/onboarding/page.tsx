@@ -34,7 +34,7 @@ export default function OnboardingPage() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#07080d]">
+      <div className="min-h-screen flex items-center justify-center bg-[#09090b]">
         <div className="text-center">
           <div className="w-12 h-12 border-t-2 border-r-2 border-accent rounded-full animate-spin mx-auto mb-4" style={{ borderColor: "var(--accent) transparent transparent transparent" }} />
           <p className="text-[#8b8fa3]">Loading profile...</p>
@@ -81,16 +81,18 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#07080d] p-6">
-      {/* Background orbs */}
-      <div className="fixed inset-0 pointer-events-none z-0">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#09090b] p-6">
+      {/* Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 bg-[#09090b]">
         <div
-          className="orb orb-accent"
-          style={{ width: "600px", height: "600px", top: "-10%", left: "-10%" }}
-        />
-        <div
-          className="orb orb-cyan"
-          style={{ width: "500px", height: "500px", bottom: "-10%", right: "-5%", animationDelay: "-5s" }}
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `
+              linear-gradient(var(--text-muted) 1px, transparent 1px),
+              linear-gradient(90deg, var(--text-muted) 1px, transparent 1px)
+            `,
+            backgroundSize: "80px 80px",
+          }}
         />
       </div>
 
