@@ -59,6 +59,10 @@ export default function MeetingRoomClient({
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const screenVideoRef = useRef<HTMLVideoElement>(null);
 
+  // Use refs to avoid stale closures in cleanup hooks
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+
   // Initialize camera and mic permissions in the lobby
   const startLocalMedia = async () => {
     try {
@@ -67,6 +71,7 @@ export default function MeetingRoomClient({
         audio: true,
       });
       setLocalStream(stream);
+      localStreamRef.current = stream;
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
@@ -78,13 +83,34 @@ export default function MeetingRoomClient({
   useEffect(() => {
     startLocalMedia();
 
+    // Send keepalive PATCH call on window/tab close or refresh
+    const handleUnload = () => {
+      fetch("/api/meetings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: meeting.code, status: "LEFT" }),
+        keepalive: true,
+      });
+    };
+    window.addEventListener("beforeunload", handleUnload);
+
     return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+
+      // Notify server that we left (handles internal routing transitions)
+      fetch("/api/meetings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: meeting.code, status: "LEFT" }),
+        keepalive: true,
+      }).catch((err) => console.error("Failed to notify leave on unmount:", err));
+
       // Clean up tracks when user leaves or closes room
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop());
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop());
       }
-      if (screenStream) {
-        screenStream.getTracks().forEach((track) => track.stop());
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
@@ -135,32 +161,75 @@ export default function MeetingRoomClient({
     return () => clearInterval(interval);
   }, [joined, meeting.code, localStream, screenStream, router]);
 
-  const toggleMic = () => {
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        setMicActive(audioTrack.enabled);
+  const rebuildStream = (audioTrack?: MediaStreamTrack, videoTrack?: MediaStreamTrack) => {
+    const newStream = new MediaStream();
+    if (audioTrack) newStream.addTrack(audioTrack);
+    if (videoTrack) newStream.addTrack(videoTrack);
+    
+    setLocalStream(newStream);
+    localStreamRef.current = newStream;
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = newStream;
+    }
+  };
+
+  const toggleMic = async () => {
+    if (micActive) {
+      // Turn off microphone: stop the track entirely to release hardware
+      if (localStream) {
+        localStream.getAudioTracks().forEach((track) => track.stop());
+      }
+      setMicActive(false);
+      
+      const videoTrack = localStream?.getVideoTracks()[0];
+      rebuildStream(undefined, videoTrack);
+    } else {
+      // Turn on microphone: request fresh audio track
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioTrack = stream.getAudioTracks()[0];
+        const videoTrack = localStream?.getVideoTracks()[0];
+        
+        setMicActive(true);
+        rebuildStream(audioTrack, videoTrack);
+      } catch (err) {
+        console.error("Failed to start audio track:", err);
       }
     }
   };
 
-  const toggleCam = () => {
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        setCamActive(videoTrack.enabled);
+  const toggleCam = async () => {
+    if (camActive) {
+      // Turn off camera: stop the track entirely to release hardware
+      if (localStream) {
+        localStream.getVideoTracks().forEach((track) => track.stop());
+      }
+      setCamActive(false);
+      
+      const audioTrack = localStream?.getAudioTracks()[0];
+      rebuildStream(audioTrack, undefined);
+    } else {
+      // Turn on camera: request fresh video track
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const videoTrack = stream.getVideoTracks()[0];
+        const audioTrack = localStream?.getAudioTracks()[0];
+        
+        setCamActive(true);
+        rebuildStream(audioTrack, videoTrack);
+      } catch (err) {
+        console.error("Failed to start video track:", err);
       }
     }
   };
 
   const toggleScreenShare = async () => {
     if (screenSharing) {
-      if (screenStream) {
-        screenStream.getTracks().forEach((track) => track.stop());
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach((track) => track.stop());
       }
       setScreenStream(null);
+      screenStreamRef.current = null;
       setScreenSharing(false);
     } else {
       try {
@@ -168,11 +237,13 @@ export default function MeetingRoomClient({
           video: true,
         });
         setScreenStream(stream);
+        screenStreamRef.current = stream;
         setScreenSharing(true);
 
         stream.getVideoTracks()[0].onended = () => {
           setScreenSharing(false);
           setScreenStream(null);
+          screenStreamRef.current = null;
         };
       } catch (err) {
         console.error("Failed to share screen:", err);
@@ -199,13 +270,18 @@ export default function MeetingRoomClient({
       console.error("Failed to notify leave:", err);
     }
 
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+      localStreamRef.current = null;
     }
-    if (screenStream) {
-      screenStream.getTracks().forEach((track) => track.stop());
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((track) => track.stop());
+      setScreenStream(null);
+      screenStreamRef.current = null;
     }
     router.push("/dashboard/meetings");
+    router.refresh();
   };
 
   const handleEndMeeting = async () => {

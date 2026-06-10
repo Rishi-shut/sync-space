@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { UserStatus } from "@prisma/client";
+import { UserStatus } from "@/generated/client";
 
 export async function PATCH(req: Request) {
   try {

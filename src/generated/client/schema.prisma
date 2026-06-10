@@ -13,9 +13,9 @@ datasource db {
 
 // ─── User ────────────────────────────────────
 model User {
-  id          String   @id @default(cuid())
-  clerkId     String   @unique
-  email       String   @unique
+  id          String     @id @default(cuid())
+  clerkId     String     @unique
+  email       String     @unique
   name        String?
   displayName String?
   imageUrl    String?
@@ -26,14 +26,14 @@ model User {
   updatedAt   DateTime   @updatedAt
 
   // Relations
-  messages          Message[]
-  memberships       ConversationMember[]
+  messages            Message[]
+  memberships         ConversationMember[]
   meetingParticipants MeetingParticipant[]
-  createdMeetings   Meeting[]          @relation("MeetingCreator")
-  reactions         Reaction[]
-  sentFiles         Attachment[]
-  sentFriendships     Friendship[]       @relation("SentFriendships")
-  receivedFriendships Friendship[]       @relation("ReceivedFriendships")
+  createdMeetings     Meeting[]            @relation("MeetingCreator")
+  reactions           Reaction[]
+  sentFiles           Attachment[]
+  sentFriendships     Friendship[]         @relation("SentFriendships")
+  receivedFriendships Friendship[]         @relation("ReceivedFriendships")
 
   @@map("users")
 }
@@ -122,14 +122,14 @@ enum MessageType {
 
 // ─── Attachment ──────────────────────────────
 model Attachment {
-  id        String   @id @default(cuid())
-  messageId String
+  id         String   @id @default(cuid())
+  messageId  String
   uploaderId String
-  name      String
-  url       String
-  mimeType  String
-  size      Int
-  createdAt DateTime @default(now())
+  name       String
+  url        String
+  mimeType   String
+  size       Int
+  createdAt  DateTime @default(now())
 
   message  Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   uploader User    @relation(fields: [uploaderId], references: [id])
@@ -154,20 +154,20 @@ model Reaction {
 
 // ─── Meeting ─────────────────────────────────
 model Meeting {
-  id          String        @id @default(cuid())
-  title       String
-  description String?
-  code        String        @unique @default(cuid())
-  status      MeetingStatus @default(SCHEDULED)
-  type        MeetingType   @default(VIDEO)
-  scheduledAt DateTime?
-  startedAt   DateTime?
-  endedAt     DateTime?
-  maxParticipants Int       @default(50)
-  isRecording Boolean       @default(false)
-  createdById String
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  title           String
+  description     String?
+  code            String        @unique @default(cuid())
+  status          MeetingStatus @default(SCHEDULED)
+  type            MeetingType   @default(VIDEO)
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  maxParticipants Int           @default(50)
+  isRecording     Boolean       @default(false)
+  createdById     String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   createdBy    User                 @relation("MeetingCreator", fields: [createdById], references: [id])
   participants MeetingParticipant[]
@@ -189,15 +189,15 @@ enum MeetingType {
 }
 
 model MeetingParticipant {
-  id             String          @id @default(cuid())
-  meetingId      String
-  userId         String
-  role           ParticipantRole @default(PARTICIPANT)
-  isMuted        Boolean         @default(false)
-  isCameraOff    Boolean         @default(false)
-  isScreenSharing Boolean        @default(false)
-  joinedAt       DateTime        @default(now())
-  leftAt         DateTime?
+  id              String          @id @default(cuid())
+  meetingId       String
+  userId          String
+  role            ParticipantRole @default(PARTICIPANT)
+  isMuted         Boolean         @default(false)
+  isCameraOff     Boolean         @default(false)
+  isScreenSharing Boolean         @default(false)
+  joinedAt        DateTime        @default(now())
+  leftAt          DateTime?
 
   meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id])
@@ -214,15 +214,15 @@ enum ParticipantRole {
 
 // ─── Friendship ──────────────────────────────
 model Friendship {
-  id          String           @id @default(cuid())
-  senderId    String
-  receiverId  String
-  status      FriendshipStatus @default(PENDING)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id         String           @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     FriendshipStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
 
-  sender      User             @relation("SentFriendships", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver    User             @relation("ReceivedFriendships", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender   User @relation("SentFriendships", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedFriendships", fields: [receiverId], references: [id], onDelete: Cascade)
 
   @@unique([senderId, receiverId])
   @@map("friendships")

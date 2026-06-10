@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { ConversationType } from "@prisma/client";
+import { ConversationType } from "@/generated/client";
 
 export async function GET() {
   try {

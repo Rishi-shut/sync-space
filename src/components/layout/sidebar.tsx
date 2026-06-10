@@ -41,6 +41,7 @@ export default function Sidebar({ user }: SidebarProps) {
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, badge: String(conversations.length || "") },
     { label: "Meetings", href: "/dashboard/meetings", icon: Video },
+    { label: "Friends", href: "/dashboard/friends", icon: Users },
     { label: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 

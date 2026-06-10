@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { MeetingStatus, MeetingType } from "@prisma/client";
+import { MeetingStatus, MeetingType } from "@/generated/client";
 
 // Generate a random human-friendly room code: "abc-defg-hij"
 function generateRoomCode() {

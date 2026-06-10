@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { MessageType } from "@prisma/client";
+import { MessageType } from "@/generated/client";
 
 const MESSAGES_BATCH = 30;
 
@@ -210,7 +210,7 @@ export async function POST(
       },
     });
 
-    const hasBot = fullConversation?.members.some((m) => m.userId === botId);
+    const hasBot = fullConversation?.members.some((m: any) => m.userId === botId);
     if (hasBot && dbUser.clerkId !== botId) {
       // Trigger non-blocking async reply
       (async () => {

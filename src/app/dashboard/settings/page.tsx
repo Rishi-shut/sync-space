@@ -24,7 +24,10 @@ export default function SettingsPage() {
 
       // Retrieve current database record to load bio
       fetch("/api/user/sync", { method: "POST" })
-        .then((res) => res.json())
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to sync user data");
+          return res.json();
+        })
         .then((data) => {
           if (data.bio) setBio(data.bio);
           if (data.displayName) setDisplayName(data.displayName);
