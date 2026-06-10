@@ -62,6 +62,7 @@ export default function MeetingRoomClient({
   // Use refs to avoid stale closures in cleanup hooks
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
+  const isMountedRef = useRef(true);
 
   // Initialize camera and mic permissions in the lobby
   const startLocalMedia = async () => {
@@ -70,6 +71,13 @@ export default function MeetingRoomClient({
         video: true,
         audio: true,
       });
+
+      // Stop tracks immediately if the component unmounted while spinner was loading
+      if (!isMountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
       setLocalStream(stream);
       localStreamRef.current = stream;
       if (localVideoRef.current) {
@@ -81,29 +89,26 @@ export default function MeetingRoomClient({
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
     startLocalMedia();
 
-    // Send keepalive PATCH call on window/tab close or refresh
+    // Send keepalive beacon call on window/tab close, refresh, or hide
     const handleUnload = () => {
-      fetch("/api/meetings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: meeting.code, status: "LEFT" }),
-        keepalive: true,
-      });
+      const payload = JSON.stringify({ code: meeting.code });
+      navigator.sendBeacon("/api/meetings/leave", payload);
     };
+    
     window.addEventListener("beforeunload", handleUnload);
+    window.addEventListener("pagehide", handleUnload);
 
     return () => {
+      isMountedRef.current = false;
       window.removeEventListener("beforeunload", handleUnload);
+      window.removeEventListener("pagehide", handleUnload);
 
       // Notify server that we left (handles internal routing transitions)
-      fetch("/api/meetings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: meeting.code, status: "LEFT" }),
-        keepalive: true,
-      }).catch((err) => console.error("Failed to notify leave on unmount:", err));
+      const payload = JSON.stringify({ code: meeting.code });
+      navigator.sendBeacon("/api/meetings/leave", payload);
 
       // Clean up tracks when user leaves or closes room
       if (localStreamRef.current) {
@@ -187,6 +192,12 @@ export default function MeetingRoomClient({
       // Turn on microphone: request fresh audio track
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        if (!isMountedRef.current) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
         const audioTrack = stream.getAudioTracks()[0];
         const videoTrack = localStream?.getVideoTracks()[0];
         
@@ -212,6 +223,12 @@ export default function MeetingRoomClient({
       // Turn on camera: request fresh video track
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        
+        if (!isMountedRef.current) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
         const videoTrack = stream.getVideoTracks()[0];
         const audioTrack = localStream?.getAudioTracks()[0];
         
@@ -236,6 +253,12 @@ export default function MeetingRoomClient({
         const stream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
         });
+
+        if (!isMountedRef.current) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
         setScreenStream(stream);
         screenStreamRef.current = stream;
         setScreenSharing(true);

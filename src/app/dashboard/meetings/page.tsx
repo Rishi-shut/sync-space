@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { Clock, VideoOff, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import MeetingActionsClient from "../meeting-actions-client";
+import MeetingCardActions from "./meeting-card-actions";
 
 interface MeetingsPageProps {
   searchParams: Promise<{ ended?: string }>;
@@ -89,13 +90,16 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
                   <span className="font-mono text-xs text-accent select-all bg-bg-secondary px-2.5 py-1 rounded-lg border border-border">
                     {meeting.code}
                   </span>
-                  <Link
-                    href={`/dashboard/meetings/${meeting.code}`}
-                    className="btn-primary px-4 py-2 text-xs font-semibold gap-1.5"
-                  >
-                    Enter Room
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <MeetingCardActions code={meeting.code} status={meeting.status} />
+                    <Link
+                      href={`/dashboard/meetings/${meeting.code}`}
+                      className="btn-primary px-4 py-2 text-xs font-semibold gap-1.5"
+                    >
+                      Enter Room
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}

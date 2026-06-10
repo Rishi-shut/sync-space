@@ -180,3 +180,49 @@ export async function GET(req: Request) {
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const dbUser = await db.user.findUnique({
+      where: { clerkId: userId },
+    });
+
+    if (!dbUser) {
+      return new NextResponse("User not found in local DB", { status: 404 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const code = searchParams.get("code");
+
+    if (!code) {
+      return new NextResponse("Meeting code is required", { status: 400 });
+    }
+
+    const meeting = await db.meeting.findUnique({
+      where: { code },
+    });
+
+    if (!meeting) {
+      return new NextResponse("Meeting not found", { status: 404 });
+    }
+
+    // Only host can delete the meeting
+    if (meeting.createdById !== dbUser.id) {
+      return new NextResponse("Forbidden: Only host can delete meeting", { status: 403 });
+    }
+
+    await db.meeting.delete({
+      where: { code },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[MEETING_DELETE_ERROR]", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}
