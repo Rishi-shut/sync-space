@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Mic,
@@ -10,11 +10,13 @@ import {
   Monitor,
   PhoneOff,
   Copy,
-  Users,
   Check,
   Zap,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
-import Image from "next/image";
+
+// ─── Interfaces ────────────────────────────────────────────────────────────────
 
 interface UserInfo {
   id: string;
@@ -29,9 +31,14 @@ interface MeetingInfo {
   code: string;
   type: string;
   createdById: string;
-  createdBy: {
-    displayName: string | null;
-  };
+  createdBy: { displayName: string | null };
+}
+
+interface RemotePeer {
+  userId: string;
+  displayName: string | null;
+  imageUrl: string | null;
+  stream: MediaStream | null;
 }
 
 interface MeetingRoomClientProps {
@@ -40,6 +47,68 @@ interface MeetingRoomClientProps {
   initialParticipants: UserInfo[];
 }
 
+// ─── Helpers ────────────────────────────────────────────────────────────────────
+
+/** Stable peer ID unique per user+room (alphanumeric/dash/underscore only) */
+function makePeerId(userId: string, meetingCode: string): string {
+  const safe = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `ss_${safe(meetingCode)}_${safe(userId)}`;
+}
+
+/** Extract userId from a peerjs peer-id produced by makePeerId */
+function extractUserIdFromPeerId(peerId: string, meetingCode: string): string {
+  const prefix = `ss_${meetingCode.replace(/[^a-zA-Z0-9_-]/g, "_")}_`;
+  return peerId.startsWith(prefix) ? peerId.slice(prefix.length) : peerId;
+}
+
+// ─── RemoteVideo — MUST be defined outside the parent component ─────────────────
+// If defined inside, React creates a new component type on every render → constant
+// unmount/remount → useEffect that attaches srcObject never runs → no video shown.
+
+interface RemoteVideoProps {
+  peer: RemotePeer;
+}
+
+function RemoteVideo({ peer }: RemoteVideoProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current && peer.stream) {
+      videoRef.current.srcObject = peer.stream;
+    }
+  }, [peer.stream]);
+
+  return (
+    <div className="aspect-video rounded-2xl overflow-hidden border border-[#27272a] bg-[#18181b] flex items-center justify-center relative">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        // Always render the element; srcObject is set by the effect above.
+        // Hidden when no stream so the avatar shows instead.
+        className={`w-full h-full object-cover ${peer.stream ? "block" : "hidden"}`}
+      />
+      {!peer.stream && (
+        <div className="w-14 h-14 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 text-lg font-bold select-none">
+          {peer.displayName?.[0]?.toUpperCase() || "U"}
+        </div>
+      )}
+      <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/5 text-[9px] text-white flex items-center gap-1.5 select-none">
+        {peer.stream ? (
+          <Wifi className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+        ) : (
+          <WifiOff className="w-3 h-3 text-amber-400 flex-shrink-0" />
+        )}
+        <span className="truncate max-w-[120px]">
+          {peer.displayName || "Connecting…"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ─────────────────────────────────────────────────────────────
+
 export default function MeetingRoomClient({
   user,
   meeting,
@@ -47,6 +116,7 @@ export default function MeetingRoomClient({
 }: MeetingRoomClientProps) {
   const router = useRouter();
 
+  // ── State ──────────────────────────────────────────────────────────────────
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const [micActive, setMicActive] = useState(true);
@@ -55,49 +125,63 @@ export default function MeetingRoomClient({
   const [joined, setJoined] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeParticipants, setActiveParticipants] = useState<UserInfo[]>(initialParticipants);
+  const [remotePeers, setRemotePeers] = useState<Record<string, RemotePeer>>({});
+  const [peerReady, setPeerReady] = useState(false);
 
+  // ── Refs ───────────────────────────────────────────────────────────────────
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const screenVideoRef = useRef<HTMLVideoElement>(null);
-
-  // Use refs to avoid stale closures in cleanup hooks
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const isMountedRef = useRef(true);
+  const peerRef = useRef<any>(null);
+  const connectionsRef = useRef<Record<string, any>>({});
+  // Always-current participants list to avoid stale closures inside PeerJS callbacks
+  const participantsRef = useRef<UserInfo[]>(initialParticipants);
 
-  // Initialize camera and mic permissions in the lobby
+  // ── Remote peer state helpers ──────────────────────────────────────────────
+  const upsertRemotePeer = useCallback((userId: string, update: Partial<RemotePeer>) => {
+    setRemotePeers((prev) => {
+      const base: RemotePeer = prev[userId] ?? { userId, displayName: null, imageUrl: null, stream: null };
+      return { ...prev, [userId]: { ...base, ...update } };
+    });
+  }, []);
+
+  const removeRemotePeer = useCallback((userId: string) => {
+    setRemotePeers((prev) => {
+      const next = { ...prev };
+      delete next[userId];
+      return next;
+    });
+    delete connectionsRef.current[userId];
+  }, []);
+
+  // ── Keep participantsRef in sync with state ────────────────────────────────
+  useEffect(() => {
+    participantsRef.current = activeParticipants;
+  }, [activeParticipants]);
+
+  // ── Acquire local camera + mic ─────────────────────────────────────────────
   const startLocalMedia = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-
-      // Stop tracks immediately if the component unmounted while spinner was loading
-      if (!isMountedRef.current) {
-        stream.getTracks().forEach((track) => track.stop());
-        return;
-      }
-
-      setLocalStream(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      if (!isMountedRef.current) { stream.getTracks().forEach((t) => t.stop()); return; }
       localStreamRef.current = stream;
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
+      setLocalStream(stream);
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
     } catch (err) {
-      console.error("Failed to access media devices:", err);
+      console.error("[Media] Failed to acquire camera/mic:", err);
     }
   };
 
+  // ── Mount/unmount lifecycle ────────────────────────────────────────────────
   useEffect(() => {
     isMountedRef.current = true;
     startLocalMedia();
 
-    // Send keepalive beacon call on window/tab close, refresh, or hide
-    const handleUnload = () => {
-      const payload = JSON.stringify({ code: meeting.code });
-      navigator.sendBeacon("/api/meetings/leave", payload);
-    };
-    
+    const handleUnload = () =>
+      navigator.sendBeacon("/api/meetings/leave", JSON.stringify({ code: meeting.code }));
+
     window.addEventListener("beforeunload", handleUnload);
     window.addEventListener("pagehide", handleUnload);
 
@@ -105,206 +189,308 @@ export default function MeetingRoomClient({
       isMountedRef.current = false;
       window.removeEventListener("beforeunload", handleUnload);
       window.removeEventListener("pagehide", handleUnload);
-
-      // Notify server that we left (handles internal routing transitions)
-      const payload = JSON.stringify({ code: meeting.code });
-      navigator.sendBeacon("/api/meetings/leave", payload);
-
-      // Clean up tracks when user leaves or closes room
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
-      if (screenStreamRef.current) {
-        screenStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
+      navigator.sendBeacon("/api/meetings/leave", JSON.stringify({ code: meeting.code }));
+      localStreamRef.current?.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+      peerRef.current?.destroy();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Set stream to video element when joining or updating camera
+  // ── Sync local video element when stream or visibility changes ─────────────
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
     }
-  }, [joined, localStream, camActive]);
+  }, [localStream, camActive, joined]);
 
-  // Set screen share stream to element
+  // ── Sync screen share element ──────────────────────────────────────────────
   useEffect(() => {
     if (screenVideoRef.current && screenStream) {
       screenVideoRef.current.srcObject = screenStream;
     }
-  }, [screenSharing, screenStream]);
+  }, [screenStream]);
 
-  // Polling to check if meeting status becomes ENDED, and tracking active participants list
+  // ── PeerJS — initialize once when the user actually joins ──────────────────
   useEffect(() => {
     if (!joined) return;
 
-    const interval = setInterval(async () => {
+    let peer: any;
+
+    const callParticipant = (p: UserInfo) => {
+      if (!localStreamRef.current || !peer) return;
+      const targetId = makePeerId(p.id, meeting.code);
+      console.log("[PeerJS] Calling →", targetId);
+      const call = peer.call(targetId, localStreamRef.current);
+      if (!call) return;
+      connectionsRef.current[p.id] = call;
+
+      upsertRemotePeer(p.id, { userId: p.id, displayName: p.displayName, imageUrl: p.imageUrl });
+
+      call.on("stream", (remoteStream: MediaStream) => {
+        if (!isMountedRef.current) return;
+        upsertRemotePeer(p.id, { stream: remoteStream });
+      });
+      call.on("close", () => removeRemotePeer(p.id));
+      call.on("error", (err: any) => {
+        console.error("[PeerJS] Outgoing call error:", err);
+        removeRemotePeer(p.id);
+      });
+    };
+
+    const initPeer = async () => {
+      const { Peer } = await import("peerjs");
+      const myPeerId = makePeerId(user.id, meeting.code);
+      console.log("[PeerJS] Initializing as:", myPeerId);
+
+      peer = new Peer(myPeerId, {
+        config: {
+          iceServers: [
+            { urls: "stun:stun.l.google.com:19302" },
+            { urls: "stun:stun1.l.google.com:19302" },
+            { urls: "stun:stun2.l.google.com:19302" },
+          ],
+        },
+      });
+
+      peerRef.current = peer;
+
+      peer.on("open", (id: string) => {
+        if (!isMountedRef.current) return;
+        console.log("[PeerJS] Open. My ID:", id);
+        setPeerReady(true);
+
+        // Call everyone currently in the room (using latest ref, not stale closure)
+        participantsRef.current
+          .filter((p) => p.id !== user.id)
+          .forEach(callParticipant);
+      });
+
+      // Answer incoming calls
+      peer.on("call", (call: any) => {
+        if (!isMountedRef.current || !localStreamRef.current) return;
+        console.log("[PeerJS] Incoming call from:", call.peer);
+        call.answer(localStreamRef.current);
+
+        const remoteUserId = extractUserIdFromPeerId(call.peer, meeting.code);
+        connectionsRef.current[remoteUserId] = call;
+
+        // Look up participant info from the latest ref
+        const participant = participantsRef.current.find((p) => {
+          const safeId = p.id.replace(/[^a-zA-Z0-9_-]/g, "_");
+          return safeId === remoteUserId || p.id === remoteUserId;
+        });
+
+        upsertRemotePeer(remoteUserId, {
+          userId: remoteUserId,
+          displayName: participant?.displayName ?? null,
+          imageUrl: participant?.imageUrl ?? null,
+        });
+
+        call.on("stream", (remoteStream: MediaStream) => {
+          if (!isMountedRef.current) return;
+          upsertRemotePeer(remoteUserId, { stream: remoteStream });
+        });
+        call.on("close", () => removeRemotePeer(remoteUserId));
+        call.on("error", (err: any) => {
+          console.error("[PeerJS] Incoming call error:", err);
+          removeRemotePeer(remoteUserId);
+        });
+      });
+
+      peer.on("error", (err: any) => {
+        // peer-unavailable is normal (other person hasn't joined yet); suppress noise
+        if (err.type !== "peer-unavailable") {
+          console.error("[PeerJS] Peer error:", err.type, err);
+        }
+      });
+    };
+
+    initPeer();
+
+    return () => {
+      peer?.destroy();
+      peerRef.current = null;
+      connectionsRef.current = {};
+      setPeerReady(false);
+      setRemotePeers({});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joined]);
+
+  // ── Poll meeting state + handle new participants ───────────────────────────
+  useEffect(() => {
+    if (!joined) return;
+
+    const poll = async () => {
       try {
         const res = await fetch(`/api/meetings?code=${meeting.code}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.status === "ENDED") {
-            // Stop media streams
-            if (localStream) {
-              localStream.getTracks().forEach((track) => track.stop());
-            }
-            if (screenStream) {
-              screenStream.getTracks().forEach((track) => track.stop());
-            }
-            router.push("/dashboard/meetings?ended=true");
-          } else {
-            // Update active participants list
-            const participantsList = data.participants.map((p: any) => p.user);
-            setActiveParticipants(participantsList);
-          }
-        }
-      } catch (err) {
-        console.error("Error polling meeting state:", err);
-      }
-    }, 4000);
+        if (!res.ok) return;
+        const data = await res.json();
 
-    return () => clearInterval(interval);
-  }, [joined, meeting.code, localStream, screenStream, router]);
-
-  const rebuildStream = (audioTrack?: MediaStreamTrack, videoTrack?: MediaStreamTrack) => {
-    const newStream = new MediaStream();
-    if (audioTrack) newStream.addTrack(audioTrack);
-    if (videoTrack) newStream.addTrack(videoTrack);
-    
-    setLocalStream(newStream);
-    localStreamRef.current = newStream;
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = newStream;
-    }
-  };
-
-  const toggleMic = async () => {
-    if (micActive) {
-      // Turn off microphone: stop the track entirely to release hardware
-      if (localStream) {
-        localStream.getAudioTracks().forEach((track) => track.stop());
-      }
-      setMicActive(false);
-      
-      const videoTrack = localStream?.getVideoTracks()[0];
-      rebuildStream(undefined, videoTrack);
-    } else {
-      // Turn on microphone: request fresh audio track
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        if (!isMountedRef.current) {
-          stream.getTracks().forEach((track) => track.stop());
+        if (data.status === "ENDED") {
+          localStreamRef.current?.getTracks().forEach((t) => t.stop());
+          screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+          router.push("/dashboard/meetings?ended=true");
           return;
         }
 
-        const audioTrack = stream.getAudioTracks()[0];
-        const videoTrack = localStream?.getVideoTracks()[0];
-        
-        setMicActive(true);
-        rebuildStream(audioTrack, videoTrack);
+        const list: UserInfo[] = data.participants.map((p: any) => p.user);
+        setActiveParticipants(list);
+
+        // Call anyone who joined after us and isn't already connected
+        if (peerRef.current && peerReady) {
+          list
+            .filter((p) => p.id !== user.id && !connectionsRef.current[p.id])
+            .forEach((p) => {
+              const targetId = makePeerId(p.id, meeting.code);
+              console.log("[PeerJS] Newly joined participant – calling:", targetId);
+              const call = peerRef.current.call(targetId, localStreamRef.current);
+              if (!call) return;
+              connectionsRef.current[p.id] = call;
+
+              upsertRemotePeer(p.id, { userId: p.id, displayName: p.displayName, imageUrl: p.imageUrl });
+
+              call.on("stream", (remoteStream: MediaStream) => {
+                if (!isMountedRef.current) return;
+                upsertRemotePeer(p.id, { stream: remoteStream });
+              });
+              call.on("close", () => removeRemotePeer(p.id));
+            });
+        }
+
+        // Remove peers who left
+        const activeIds = new Set(list.map((p) => p.id));
+        Object.keys(connectionsRef.current).forEach((uid) => {
+          if (!activeIds.has(uid)) removeRemotePeer(uid);
+        });
       } catch (err) {
-        console.error("Failed to start audio track:", err);
+        console.error("[Poll] Error:", err);
+      }
+    };
+
+    poll(); // immediate first run
+    const interval = setInterval(poll, 4000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joined, peerReady]);
+
+  // ── Toggle helpers ─────────────────────────────────────────────────────────
+
+  /**
+   * Rebuild the local MediaStream from individual audio/video tracks.
+   * Also replaces tracks in all active PeerJS connections so remote peers
+   * see the updated stream immediately.
+   */
+  const applyStreamUpdate = useCallback((audioTrack: MediaStreamTrack | null, videoTrack: MediaStreamTrack | null) => {
+    const newStream = new MediaStream();
+    if (audioTrack) newStream.addTrack(audioTrack);
+    if (videoTrack) newStream.addTrack(videoTrack);
+
+    localStreamRef.current = newStream;
+    setLocalStream(newStream);
+
+    if (localVideoRef.current) localVideoRef.current.srcObject = newStream;
+
+    // Replace tracks in existing peer connections so remote side updates live
+    Object.values(connectionsRef.current).forEach((call) => {
+      try {
+        const pc: RTCPeerConnection = call.peerConnection;
+        if (!pc) return;
+        pc.getSenders().forEach((sender) => {
+          if (sender.track?.kind === "video" && videoTrack) sender.replaceTrack(videoTrack);
+          if (sender.track?.kind === "audio" && audioTrack) sender.replaceTrack(audioTrack);
+        });
+      } catch (_) { /* ignore */ }
+    });
+  }, []);
+
+  const toggleMic = async () => {
+    const videoTrack = localStreamRef.current?.getVideoTracks()[0] ?? null;
+
+    if (micActive) {
+      // Stop current audio tracks (releases hardware indicator)
+      localStreamRef.current?.getAudioTracks().forEach((t) => t.stop());
+      setMicActive(false);
+      applyStreamUpdate(null, videoTrack);
+    } else {
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        if (!isMountedRef.current) { s.getTracks().forEach((t) => t.stop()); return; }
+        setMicActive(true);
+        applyStreamUpdate(s.getAudioTracks()[0], videoTrack);
+      } catch (err) {
+        console.error("[Media] Failed to re-acquire mic:", err);
       }
     }
   };
 
   const toggleCam = async () => {
-    if (camActive) {
-      // Turn off camera: stop the track entirely to release hardware
-      if (localStream) {
-        localStream.getVideoTracks().forEach((track) => track.stop());
-      }
-      setCamActive(false);
-      
-      const audioTrack = localStream?.getAudioTracks()[0];
-      rebuildStream(audioTrack, undefined);
-    } else {
-      // Turn on camera: request fresh video track
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        
-        if (!isMountedRef.current) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
+    const audioTrack = localStreamRef.current?.getAudioTracks()[0] ?? null;
 
-        const videoTrack = stream.getVideoTracks()[0];
-        const audioTrack = localStream?.getAudioTracks()[0];
-        
+    if (camActive) {
+      // Fully stop the video track — this releases the hardware and clears the OS indicator
+      localStreamRef.current?.getVideoTracks().forEach((t) => t.stop());
+      setCamActive(false);
+      applyStreamUpdate(audioTrack, null);
+    } else {
+      try {
+        // Only request video — audio track is already running (or null if mic is off)
+        const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        if (!isMountedRef.current) { s.getTracks().forEach((t) => t.stop()); return; }
         setCamActive(true);
-        rebuildStream(audioTrack, videoTrack);
+        applyStreamUpdate(audioTrack, s.getVideoTracks()[0]);
       } catch (err) {
-        console.error("Failed to start video track:", err);
+        console.error("[Media] Failed to re-acquire camera:", err);
       }
     }
   };
 
   const toggleScreenShare = async () => {
     if (screenSharing) {
-      if (screenStreamRef.current) {
-        screenStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
+      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       setScreenStream(null);
       screenStreamRef.current = null;
       setScreenSharing(false);
     } else {
       try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-        });
-
-        if (!isMountedRef.current) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-
-        setScreenStream(stream);
-        screenStreamRef.current = stream;
+        const s = await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: false });
+        if (!isMountedRef.current) { s.getTracks().forEach((t: MediaStreamTrack) => t.stop()); return; }
+        screenStreamRef.current = s;
+        setScreenStream(s);
         setScreenSharing(true);
-
-        stream.getVideoTracks()[0].onended = () => {
+        s.getVideoTracks()[0].addEventListener("ended", () => {
           setScreenSharing(false);
           setScreenStream(null);
           screenStreamRef.current = null;
-        };
+        });
       } catch (err) {
-        console.error("Failed to share screen:", err);
+        console.error("[Media] Failed to start screen share:", err);
       }
     }
   };
 
   const handleCopyLink = () => {
-    const link = `${window.location.origin}/dashboard/meetings/${meeting.code}`;
-    navigator.clipboard.writeText(link);
+    navigator.clipboard.writeText(
+      `${window.location.origin}/dashboard/meetings/${meeting.code}`
+    );
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleLeave = async () => {
-    // Notify DB that we are voluntarily leaving the participant list
     try {
       await fetch("/api/meetings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: meeting.code, status: "LEFT" }),
       });
-    } catch (err) {
-      console.error("Failed to notify leave:", err);
-    }
+    } catch (_) { /* ignore */ }
 
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
-      setLocalStream(null);
-      localStreamRef.current = null;
-    }
-    if (screenStreamRef.current) {
-      screenStreamRef.current.getTracks().forEach((track) => track.stop());
-      setScreenStream(null);
-      screenStreamRef.current = null;
-    }
+    peerRef.current?.destroy();
+    localStreamRef.current?.getTracks().forEach((t) => t.stop());
+    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     router.push("/dashboard/meetings");
-    router.refresh();
   };
 
   const handleEndMeeting = async () => {
@@ -314,26 +500,24 @@ export default function MeetingRoomClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: meeting.code, status: "ENDED" }),
       });
-      if (res.ok) {
-        handleLeave();
-      }
+      if (res.ok) handleLeave();
     } catch (err) {
-      console.error("Failed to end meeting:", err);
+      console.error("[Meeting] Failed to end meeting:", err);
     }
   };
 
-  // ─── Render: Lobby Screen ───────────────────
+  // ─────────────────────────────────────────────────────────────────────────────
+  // LOBBY SCREEN
+  // ─────────────────────────────────────────────────────────────────────────────
   if (!joined) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-[#0c0c0e] p-6 text-[#f4f4f5] select-none">
+      <div className="w-full h-full flex flex-col items-center justify-center bg-[#0c0c0e] p-6 text-[#f4f4f5]">
         <div className="w-full max-w-2xl bg-[#09090b] border border-[#27272a] rounded-2xl p-8 shadow-2xl space-y-6">
           <div className="text-center space-y-1">
             <span className="text-[10px] font-bold text-accent tracking-wider uppercase">
               Meeting Lobby
             </span>
-            <h2 className="text-xl font-bold text-white tracking-tight">
-              {meeting.title}
-            </h2>
+            <h2 className="text-xl font-bold text-white tracking-tight">{meeting.title}</h2>
             <p className="text-xs text-[#a1a1aa]">
               Review your camera and audio settings before joining.
             </p>
@@ -356,11 +540,12 @@ export default function MeetingRoomClient({
               </div>
             )}
 
-            {/* Bottom preview controls */}
+            {/* Lobby controls overlay */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/5">
               <button
                 onClick={toggleMic}
-                className={`p-2 rounded-full transition-all ${
+                title={micActive ? "Mute" : "Unmute"}
+                className={`p-2 rounded-full transition-all cursor-pointer ${
                   micActive ? "text-white hover:bg-white/10" : "bg-rose-500/20 text-rose-500"
                 }`}
               >
@@ -368,7 +553,8 @@ export default function MeetingRoomClient({
               </button>
               <button
                 onClick={toggleCam}
-                className={`p-2 rounded-full transition-all ${
+                title={camActive ? "Turn off camera" : "Turn on camera"}
+                className={`p-2 rounded-full transition-all cursor-pointer ${
                   camActive ? "text-white hover:bg-white/10" : "bg-rose-500/20 text-rose-500"
                 }`}
               >
@@ -377,17 +563,16 @@ export default function MeetingRoomClient({
             </div>
           </div>
 
-          {/* Join Form CTA */}
           <div className="flex gap-4">
             <button
               onClick={handleLeave}
-              className="flex-1 btn-secondary py-3 text-xs font-semibold justify-center"
+              className="flex-1 btn-secondary py-3 text-xs font-semibold justify-center cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={() => setJoined(true)}
-              className="flex-1 btn-primary py-3 text-xs font-semibold justify-center"
+              className="flex-1 btn-primary py-3 text-xs font-semibold justify-center cursor-pointer"
             >
               Join Meeting
             </button>
@@ -397,49 +582,64 @@ export default function MeetingRoomClient({
     );
   }
 
-  // ─── Render: Active Calling Room ─────────────
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ACTIVE CALL SCREEN
+  // ─────────────────────────────────────────────────────────────────────────────
+  const remotePeerList = Object.values(remotePeers);
+  const totalParticipants = 1 + remotePeerList.length;
+
+  // Grid columns: 1 person → centred solo tile, 2 → 2 cols, 3-4 → 2 cols, 5+ → 3 cols
+  const gridCols =
+    totalParticipants === 1
+      ? "grid-cols-1 max-w-xl"
+      : totalParticipants === 2
+      ? "grid-cols-2 max-w-4xl"
+      : totalParticipants <= 4
+      ? "grid-cols-2 max-w-5xl"
+      : "grid-cols-3 max-w-6xl";
+
   return (
-    <div className="w-full h-full flex flex-col bg-[#0c0c0e] text-[#f4f4f5] relative overflow-hidden select-none">
-      {/* Top Navbar */}
-      <div className="h-16 px-6 border-b border-[#1f1f23]/60 flex items-center justify-between bg-[#09090b] relative z-10">
+    <div className="w-full h-full flex flex-col bg-[#0c0c0e] text-[#f4f4f5] relative overflow-hidden">
+      {/* ── Top bar ─────────────────────────────────────────────────────────── */}
+      <div className="h-16 px-6 border-b border-[#1f1f23]/60 flex items-center justify-between bg-[#09090b] relative z-10 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
             <Zap className="w-3.5 h-3.5" />
           </div>
           <div>
-            <h3 className="text-xs font-bold text-white truncate max-w-[200px]">
-              {meeting.title}
-            </h3>
-            <span className="text-[9px] text-[#52525b] block">
-              Hosted by {meeting.createdBy.displayName || "User"}
+            <h3 className="text-xs font-bold text-white truncate max-w-[220px]">{meeting.title}</h3>
+            <span className="text-[9px] text-[#52525b] flex items-center gap-1">
+              {peerReady ? (
+                <>
+                  <Wifi className="w-2.5 h-2.5 text-emerald-400" />
+                  Connected · {totalParticipants} participant{totalParticipants !== 1 ? "s" : ""}
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-2.5 h-2.5 text-amber-400" />
+                  Connecting…
+                </>
+              )}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#27272a] bg-[#18181b] hover:bg-[#27272a] text-[10px] text-[#a1a1aa] hover:text-white transition-colors"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400">Copied</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                <span>Copy Invite Link</span>
-              </>
-            )}
-          </button>
-        </div>
+        <button
+          onClick={handleCopyLink}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#27272a] bg-[#18181b] hover:bg-[#27272a] text-[10px] text-[#a1a1aa] hover:text-white transition-colors cursor-pointer"
+        >
+          {copied ? (
+            <><Check className="w-3.5 h-3.5 text-emerald-400" /><span className="text-emerald-400">Copied!</span></>
+          ) : (
+            <><Copy className="w-3.5 h-3.5" /><span>Copy Invite</span></>
+          )}
+        </button>
       </div>
 
-      {/* Main Calling Grid Area */}
-      <div className="flex-1 p-6 flex items-center justify-center relative overflow-hidden">
+      {/* ── Video grid ──────────────────────────────────────────────────────── */}
+      <div className="flex-1 p-5 flex items-center justify-center overflow-hidden">
         {screenSharing ? (
-          // Screen share active: split layout with large screen presentation
+          /* Screen share layout */
           <div className="w-full h-full grid grid-cols-4 gap-4">
             <div className="col-span-3 rounded-2xl overflow-hidden border border-[#27272a] bg-black relative">
               <video
@@ -452,170 +652,149 @@ export default function MeetingRoomClient({
                 You are sharing your screen
               </div>
             </div>
-            
-            {/* Sidebar list for webcam streams */}
-            <div className="col-span-1 flex flex-col gap-4 overflow-y-auto max-h-[500px]">
-              <div className="aspect-video rounded-xl overflow-hidden border border-[#27272a] bg-[#18181b] relative flex-shrink-0">
-                {camActive ? (
-                  <video
-                    ref={localVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover scale-x-[-1]"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-[#18181b]">
-                    <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent text-sm font-semibold">
-                      {user.displayName?.[0] || "U"}
-                    </div>
-                  </div>
-                )}
-                <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[8px] text-white truncate max-w-[80px]">
-                  {user.displayName || "You"}
-                </div>
-              </div>
 
-              {/* Real participants */}
-              {activeParticipants
-                .filter((peer) => peer.id !== user.id)
-                .map((peer) => (
-                  <div
-                    key={peer.id}
-                    className="aspect-video rounded-xl overflow-hidden border border-[#27272a] bg-[#18181b] flex items-center justify-center relative flex-shrink-0"
-                  >
-                    {peer.imageUrl ? (
-                      <Image
-                        src={peer.imageUrl}
-                        alt={peer.displayName || "User"}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 text-sm font-semibold">
-                        {peer.displayName?.[0] || "U"}
-                      </div>
-                    )}
-                    <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[8px] text-white truncate max-w-[80px]">
-                      {peer.displayName || "User"}
-                    </div>
-                  </div>
-                ))}
+            <div className="col-span-1 flex flex-col gap-3 overflow-y-auto">
+              {/* Self tile (small sidebar) */}
+              <SelfTile
+                videoRef={localVideoRef}
+                camActive={camActive}
+                displayName={user.displayName}
+                isHost={meeting.createdById === user.id}
+              />
+              {remotePeerList.map((peer) => (
+                <RemoteVideo key={peer.userId} peer={peer} />
+              ))}
             </div>
           </div>
         ) : (
-          // Standard Calling grid layout
-          <div className="w-full h-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl max-h-[500px] overflow-y-auto">
-            {/* User stream card */}
-            <div className="aspect-video rounded-2xl overflow-hidden border border-[#27272a] bg-[#18181b] relative group">
-              {camActive ? (
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover scale-x-[-1]"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-[#18181b]">
-                  <div className="w-14 h-14 rounded-full bg-accent/20 flex items-center justify-center text-accent text-lg font-bold">
-                    {user.displayName?.[0] || "U"}
-                  </div>
-                </div>
-              )}
-              <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/5 text-[9px] text-white">
-                {user.displayName || "You"} {meeting.createdById === user.id && "(Host)"}
-              </div>
-            </div>
-
-            {/* Real participants */}
-            {activeParticipants
-              .filter((peer) => peer.id !== user.id)
-              .map((peer) => (
-                <div
-                  key={peer.id}
-                  className="aspect-video rounded-2xl overflow-hidden border border-[#27272a] bg-[#18181b] flex items-center justify-center relative"
-                >
-                  {peer.imageUrl ? (
-                    <Image
-                      src={peer.imageUrl}
-                      alt={peer.displayName || "User"}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 text-lg font-bold">
-                      {peer.displayName?.[0] || "U"}
-                    </div>
-                  )}
-                  <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/5 text-[9px] text-white">
-                    {peer.displayName || "User"} {meeting.createdById === peer.id && "(Host)"}
-                  </div>
-                </div>
-              ))}
+          /* Normal grid */
+          <div className={`w-full grid gap-5 ${gridCols}`}>
+            {/* Self tile */}
+            <SelfTile
+              videoRef={localVideoRef}
+              camActive={camActive}
+              displayName={user.displayName}
+              isHost={meeting.createdById === user.id}
+            />
+            {/* Remote peers */}
+            {remotePeerList.map((peer) => (
+              <RemoteVideo key={peer.userId} peer={peer} />
+            ))}
           </div>
         )}
       </div>
 
-      {/* Floating Room Controls Bar */}
-      <div className="h-20 border-t border-[#1f1f23]/60 flex items-center justify-center bg-[#09090b] relative z-10">
-        <div className="flex items-center gap-4">
-          <button
+      {/* ── Controls bar ────────────────────────────────────────────────────── */}
+      <div className="h-20 border-t border-[#1f1f23]/60 flex items-center justify-center bg-[#09090b] relative z-10 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          {/* Mic */}
+          <ControlBtn
+            active={micActive}
             onClick={toggleMic}
-            className={`p-3 rounded-full border transition-all ${
-              micActive
-                ? "border-[#27272a] bg-[#18181b] text-white hover:bg-[#27272a]"
-                : "border-rose-500/30 bg-rose-500/15 text-rose-500 hover:bg-rose-500/25"
-            }`}
             title={micActive ? "Mute Microphone" : "Unmute Microphone"}
-          >
-            {micActive ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-          </button>
+            icon={micActive ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+          />
 
-          <button
+          {/* Cam */}
+          <ControlBtn
+            active={camActive}
             onClick={toggleCam}
-            className={`p-3 rounded-full border transition-all ${
-              camActive
-                ? "border-[#27272a] bg-[#18181b] text-white hover:bg-[#27272a]"
-                : "border-rose-500/30 bg-rose-500/15 text-rose-500 hover:bg-rose-500/25"
-            }`}
             title={camActive ? "Turn Off Camera" : "Turn On Camera"}
-          >
-            {camActive ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-          </button>
+            icon={camActive ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+          />
 
+          {/* Screen share */}
           <button
             onClick={toggleScreenShare}
-            className={`p-3 rounded-full border transition-all ${
+            title={screenSharing ? "Stop Sharing" : "Share Screen"}
+            className={`p-3 rounded-full border transition-all cursor-pointer ${
               screenSharing
                 ? "border-accent/40 bg-accent/20 text-accent"
                 : "border-[#27272a] bg-[#18181b] text-[#a1a1aa] hover:text-white hover:bg-[#27272a]"
             }`}
-            title={screenSharing ? "Stop Sharing Screen" : "Share Screen"}
           >
             <Monitor className="w-5 h-5" />
           </button>
 
+          {/* Leave */}
           <button
             onClick={handleLeave}
-            className="p-3 rounded-full border border-[#27272a] bg-[#18181b] text-[#a1a1aa] hover:text-white hover:bg-[#27272a] transition-all"
             title="Leave Meeting"
+            className="p-3 rounded-full border border-[#27272a] bg-[#18181b] text-[#a1a1aa] hover:text-white hover:bg-[#27272a] transition-all cursor-pointer"
           >
             <PhoneOff className="w-5 h-5" />
           </button>
 
+          {/* End (host only) */}
           {meeting.createdById === user.id && (
             <button
               onClick={handleEndMeeting}
-              className="p-3 rounded-full bg-rose-600 text-white hover:bg-rose-700 transition-all border border-rose-500/20 flex items-center justify-center gap-1.5 px-4"
               title="End Meeting for Everyone"
+              className="flex items-center gap-2 px-4 py-3 rounded-full bg-rose-600 text-white hover:bg-rose-700 transition-all border border-rose-500/20 cursor-pointer"
             >
-              <PhoneOff className="w-5 h-5 animate-pulse" />
+              <PhoneOff className="w-4 h-4" />
               <span className="text-xs font-semibold">End Meeting</span>
             </button>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── Sub-components (defined outside MeetingRoomClient) ─────────────────────────
+
+interface SelfTileProps {
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  camActive: boolean;
+  displayName: string | null;
+  isHost: boolean;
+}
+
+function SelfTile({ videoRef, camActive, displayName, isHost }: SelfTileProps) {
+  return (
+    <div className="aspect-video rounded-2xl overflow-hidden border border-[#27272a] bg-[#18181b] relative">
+      {/* Always keep the video element mounted so srcObject assignment works */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className={`w-full h-full object-cover scale-x-[-1] ${camActive ? "block" : "hidden"}`}
+      />
+      {!camActive && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#18181b]">
+          <div className="w-14 h-14 rounded-full bg-accent/20 flex items-center justify-center text-accent text-lg font-bold select-none">
+            {displayName?.[0]?.toUpperCase() || "U"}
+          </div>
+        </div>
+      )}
+      <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/5 text-[9px] text-white select-none">
+        {displayName || "You"}{isHost ? " (Host)" : ""}
+      </div>
+    </div>
+  );
+}
+
+interface ControlBtnProps {
+  active: boolean;
+  onClick: () => void;
+  title: string;
+  icon: React.ReactNode;
+}
+
+function ControlBtn({ active, onClick, title, icon }: ControlBtnProps) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`p-3 rounded-full border transition-all cursor-pointer ${
+        active
+          ? "border-[#27272a] bg-[#18181b] text-white hover:bg-[#27272a]"
+          : "border-rose-500/30 bg-rose-500/15 text-rose-500 hover:bg-rose-500/25"
+      }`}
+    >
+      {icon}
+    </button>
   );
 }
