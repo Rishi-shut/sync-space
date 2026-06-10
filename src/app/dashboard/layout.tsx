@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import Sidebar from "@/components/layout/sidebar";
 import Navbar from "@/components/layout/navbar";
 import CommandPalette from "@/components/layout/command-palette";
+import PageTransition from "@/components/layout/page-transition";
 
 export default async function DashboardLayout({
   children,
@@ -34,7 +35,7 @@ export default async function DashboardLayout({
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         <Navbar user={user} />
         <main className="flex-1 overflow-y-auto relative z-10">
-          {children}
+          <PageTransition>{children}</PageTransition>
         </main>
       </div>
 

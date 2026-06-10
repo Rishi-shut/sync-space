@@ -162,9 +162,16 @@ export default function ConversationListClient({ userId }: ConversationListClien
       {/* Conversations List */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {isLoading ? (
-          <div className="text-center py-8">
-            <div className="w-5 h-5 border-2 border-t-transparent border-accent rounded-full animate-spin mx-auto mb-2" />
-            <p className="text-[10px] text-[#52525b]">Loading chats...</p>
+          <div className="space-y-2 p-1">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-[#18181b]/30 animate-pulse">
+                <div className="w-9 h-9 rounded-lg bg-[#27272a]/60" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 bg-[#27272a]/60 rounded w-2/3" />
+                  <div className="h-2 bg-[#27272a]/40 rounded w-1/2" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : filteredConversations.length > 0 ? (
           filteredConversations.map((convo) => {
