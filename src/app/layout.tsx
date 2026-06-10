@@ -30,39 +30,39 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen antialiased">
-        <ClerkProvider
-          appearance={{
-            variables: {
-              colorPrimary: "#7c5cfc",
-              colorBackground: "#0f1118",
-              colorInputBackground: "#161925",
-              colorInputText: "#f0f2f5",
-              colorText: "#f0f2f5",
-              colorTextSecondary: "#8b8fa3",
-              borderRadius: "12px",
-              fontSize: "14px",
-            },
-            elements: {
-              formButtonPrimary:
-                "bg-[#7c5cfc] hover:bg-[#9178ff] shadow-[0_0_30px_rgba(124,92,252,0.25)] transition-all duration-200",
-              card: "bg-[#0f1118] border border-[#1e2235] shadow-2xl",
-              headerTitle: "text-[#f0f2f5]",
-              headerSubtitle: "text-[#8b8fa3]",
-              socialButtonsBlockButton:
-                "bg-[#161925] border-[#1e2235] text-[#f0f2f5] hover:bg-[#1e2235]",
-              formFieldInput:
-                "bg-[#161925] border-[#1e2235] text-[#f0f2f5] focus:border-[#7c5cfc] focus:ring-[#7c5cfc]/20",
-              footerActionLink: "text-[#7c5cfc] hover:text-[#9178ff]",
-              identityPreviewEditButton:
-                "text-[#7c5cfc] hover:text-[#9178ff]",
-            },
-          }}
-        >
+    <ClerkProvider
+      appearance={{
+        variables: {
+          colorPrimary: "#7c5cfc",
+          colorBackground: "#0f1118",
+          colorInputBackground: "#161925",
+          colorInputText: "#f0f2f5",
+          colorText: "#f0f2f5",
+          colorTextSecondary: "#8b8fa3",
+          borderRadius: "12px",
+          fontSize: "14px",
+        },
+        elements: {
+          formButtonPrimary:
+            "bg-[#7c5cfc] hover:bg-[#9178ff] shadow-[0_0_30px_rgba(124,92,252,0.25)] transition-all duration-200",
+          card: "bg-[#0f1118] border border-[#1e2235] shadow-2xl",
+          headerTitle: "text-[#f0f2f5]",
+          headerSubtitle: "text-[#8b8fa3]",
+          socialButtonsBlockButton:
+            "bg-[#161925] border-[#1e2235] text-[#f0f2f5] hover:bg-[#1e2235]",
+          formFieldInput:
+            "bg-[#161925] border-[#1e2235] text-[#f0f2f5] focus:border-[#7c5cfc] focus:ring-[#7c5cfc]/20",
+          footerActionLink: "text-[#7c5cfc] hover:text-[#9178ff]",
+          identityPreviewEditButton:
+            "text-[#7c5cfc] hover:text-[#9178ff]",
+        },
+      }}
+    >
+      <html lang="en" suppressHydrationWarning>
+        <body className="min-h-screen antialiased">
           <ThemeProvider>{children}</ThemeProvider>
-        </ClerkProvider>
-      </body>
-    </html>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
