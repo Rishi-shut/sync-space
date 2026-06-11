@@ -6,6 +6,10 @@ import { Video, Plus, ArrowRight } from "lucide-react";
 
 export default function MeetingActionsClient() {
   const router = useRouter();
+  const [showSettings, setShowSettings] = useState(false);
+  const [requirePassword, setRequirePassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [requireApproval, setRequireApproval] = useState(false);
   const [roomCode, setRoomCode] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
@@ -17,7 +21,11 @@ export default function MeetingActionsClient() {
       const res = await fetch("/api/meetings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "Quick Meeting" }),
+        body: JSON.stringify({
+          title: "Quick Meeting",
+          password: requirePassword ? password : null,
+          requireApproval,
+        }),
       });
 
       if (!res.ok) throw new Error("Failed to create meeting");
@@ -48,6 +56,54 @@ export default function MeetingActionsClient() {
           <p className="text-xs text-text-secondary">
             Start an HD video conference with screensharing and direct link invitations.
           </p>
+        </div>
+
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowSettings(!showSettings)}
+            className="text-[10px] font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>{showSettings ? "Hide Security Options" : "Show Security Options"}</span>
+          </button>
+
+          {showSettings && (
+            <div className="mt-3 p-3 rounded-xl border border-border bg-background/50 space-y-3">
+              {/* Host Admission Approval Option */}
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-text-secondary">Require Host Approval</span>
+                <input
+                  type="checkbox"
+                  checked={requireApproval}
+                  onChange={(e) => setRequireApproval(e.target.checked)}
+                  className="rounded border-border bg-card text-accent focus:ring-accent w-3.5 h-3.5 cursor-pointer"
+                />
+              </div>
+
+              {/* Password Option */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-text-secondary">Password Protected</span>
+                  <input
+                    type="checkbox"
+                    checked={requirePassword}
+                    onChange={(e) => setRequirePassword(e.target.checked)}
+                    className="rounded border-border bg-card text-accent focus:ring-accent w-3.5 h-3.5 cursor-pointer"
+                  />
+                </div>
+                {requirePassword && (
+                  <input
+                    type="text"
+                    placeholder="Enter meeting password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full input text-[10px] py-1 bg-background border-border text-text-primary"
+                    required={requirePassword}
+                  />
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {error && <p className="text-xs text-rose-500 mt-2">{error}</p>}

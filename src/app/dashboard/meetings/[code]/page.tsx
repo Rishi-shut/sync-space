@@ -44,6 +44,8 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
     redirect("/dashboard/meetings?ended=true");
   }
 
+  const isHost = meeting.createdById === user.id;
+
   // Upsert a participant record to mark this user as active in the meeting
   await db.meetingParticipant.upsert({
     where: {
@@ -58,7 +60,8 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
     create: {
       meetingId: meeting.id,
       userId: user.id,
-      role: meeting.createdById === user.id ? "HOST" : "PARTICIPANT",
+      role: isHost ? "HOST" : "PARTICIPANT",
+      isApproved: isHost ? true : !meeting.requireApproval,
     },
   });
 

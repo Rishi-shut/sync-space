@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { title = "Quick Meeting", type = "VIDEO" } = body;
+    const { title = "Quick Meeting", type = "VIDEO", password = null, requireApproval = false } = body;
 
     const code = generateRoomCode();
 
@@ -40,6 +40,8 @@ export async function POST(req: Request) {
         type: type as MeetingType,
         createdById: dbUser.id,
         startedAt: new Date(),
+        password: password ? password : null,
+        requireApproval: !!requireApproval,
       },
     });
 
@@ -87,6 +89,50 @@ export async function PATCH(req: Request) {
 
     if (!meeting) {
       return new NextResponse("Meeting not found", { status: 404 });
+    }
+
+    // Host approving participant
+    if (status === "APPROVE_PARTICIPANT") {
+      const { targetUserId } = body;
+      if (!targetUserId) {
+        return new NextResponse("targetUserId is required", { status: 400 });
+      }
+      if (meeting.createdById !== dbUser.id) {
+        return new NextResponse("Forbidden: Only host can approve admission", { status: 403 });
+      }
+      await db.meetingParticipant.updateMany({
+        where: {
+          meetingId: meeting.id,
+          userId: targetUserId,
+          leftAt: null,
+        },
+        data: {
+          isApproved: true,
+        },
+      });
+      return NextResponse.json({ success: true });
+    }
+
+    // Host denying participant
+    if (status === "DENY_PARTICIPANT") {
+      const { targetUserId } = body;
+      if (!targetUserId) {
+        return new NextResponse("targetUserId is required", { status: 400 });
+      }
+      if (meeting.createdById !== dbUser.id) {
+        return new NextResponse("Forbidden: Only host can deny admission", { status: 403 });
+      }
+      await db.meetingParticipant.updateMany({
+        where: {
+          meetingId: meeting.id,
+          userId: targetUserId,
+          leftAt: null,
+        },
+        data: {
+          leftAt: new Date(),
+        },
+      });
+      return NextResponse.json({ success: true });
     }
 
     // Voluntarily leaving the meeting
@@ -143,8 +189,17 @@ export async function GET(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
+    const dbUser = await db.user.findUnique({
+      where: { clerkId: userId },
+    });
+
+    if (!dbUser) {
+      return new NextResponse("User not found in local DB", { status: 404 });
+    }
+
     const { searchParams } = new URL(req.url);
     const code = searchParams.get("code");
+    const passwordParam = searchParams.get("password");
 
     if (!code) {
       return new NextResponse("Meeting code is required", { status: 400 });
@@ -174,7 +229,21 @@ export async function GET(req: Request) {
       return new NextResponse("Meeting not found", { status: 404 });
     }
 
-    return NextResponse.json(meeting);
+    // Password check: if meeting is password-protected and user is not host
+    if (meeting.password && meeting.createdById !== dbUser.id) {
+      if (meeting.password !== passwordParam) {
+        return new NextResponse("Password required or invalid", { status: 403 });
+      }
+    }
+
+    const hasPassword = !!meeting.password;
+    const clientMeeting = {
+      ...meeting,
+      password: null,
+      hasPassword,
+    };
+
+    return NextResponse.json(clientMeeting);
   } catch (error) {
     console.error("[MEETING_GET_ERROR]", error);
     return new NextResponse("Internal Server Error", { status: 500 });

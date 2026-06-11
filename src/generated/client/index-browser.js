@@ -200,7 +200,9 @@ exports.Prisma.MeetingScalarFieldEnum = {
   isRecording: 'isRecording',
   createdById: 'createdById',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  password: 'password',
+  requireApproval: 'requireApproval'
 };
 
 exports.Prisma.MeetingParticipantScalarFieldEnum = {
@@ -211,6 +213,7 @@ exports.Prisma.MeetingParticipantScalarFieldEnum = {
   isMuted: 'isMuted',
   isCameraOff: 'isCameraOff',
   isScreenSharing: 'isScreenSharing',
+  isApproved: 'isApproved',
   joinedAt: 'joinedAt',
   leftAt: 'leftAt'
 };

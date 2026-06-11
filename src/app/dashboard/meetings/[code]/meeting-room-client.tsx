@@ -32,6 +32,8 @@ interface MeetingInfo {
   type: string;
   createdById: string;
   createdBy: { displayName: string | null };
+  hasPassword?: boolean;
+  requireApproval?: boolean;
 }
 
 interface RemotePeer {
@@ -120,13 +122,20 @@ export default function MeetingRoomClient({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const [micActive, setMicActive] = useState(true);
-  const [camActive, setCamActive] = useState(true);
+  const [camActive, setCamActive] = useState(false);
   const [screenSharing, setScreenSharing] = useState(false);
   const [joined, setJoined] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeParticipants, setActiveParticipants] = useState<UserInfo[]>(initialParticipants);
   const [remotePeers, setRemotePeers] = useState<Record<string, RemotePeer>>({});
   const [peerReady, setPeerReady] = useState(false);
+  const isHost = meeting.createdById === user.id;
+  const [password, setPassword] = useState("");
+  const [passwordVerified, setPasswordVerified] = useState(!meeting.hasPassword || isHost);
+  const [passwordError, setPasswordError] = useState("");
+  const [isApprovedByHost, setIsApprovedByHost] = useState(!meeting.requireApproval || isHost);
+  const [wasDenied, setWasDenied] = useState(false);
+  const [pendingParticipants, setPendingParticipants] = useState<any[]>([]);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -163,15 +172,44 @@ export default function MeetingRoomClient({
 
   // ── Acquire local camera + mic ─────────────────────────────────────────────
   const startLocalMedia = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      if (!isMountedRef.current) { stream.getTracks().forEach((t) => t.stop()); return; }
-      localStreamRef.current = stream;
-      setLocalStream(stream);
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-    } catch (err) {
-      console.error("[Media] Failed to acquire camera/mic:", err);
+    let videoStream: MediaStream | null = null;
+    let audioStream: MediaStream | null = null;
+
+    if (camActive) {
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      } catch (err) {
+        console.warn("[Media] Video acquisition failed:", err);
+        setCamActive(false);
+      }
     }
+
+    if (micActive) {
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+      } catch (err) {
+        console.warn("[Media] Audio acquisition failed:", err);
+        setMicActive(false);
+      }
+    }
+
+    if (!isMountedRef.current) {
+      videoStream?.getTracks().forEach((t) => t.stop());
+      audioStream?.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
+    const combinedStream = new MediaStream();
+    if (videoStream) {
+      videoStream.getVideoTracks().forEach((track) => combinedStream.addTrack(track));
+    }
+    if (audioStream) {
+      audioStream.getAudioTracks().forEach((track) => combinedStream.addTrack(track));
+    }
+
+    localStreamRef.current = combinedStream;
+    setLocalStream(combinedStream);
+    if (localVideoRef.current) localVideoRef.current.srcObject = combinedStream;
   };
 
   // ── Mount/unmount lifecycle ────────────────────────────────────────────────
@@ -213,7 +251,7 @@ export default function MeetingRoomClient({
 
   // ── PeerJS — initialize once when the user actually joins ──────────────────
   useEffect(() => {
-    if (!joined) return;
+    if (!joined || !isApprovedByHost) return;
 
     let peer: any;
 
@@ -316,7 +354,7 @@ export default function MeetingRoomClient({
       setRemotePeers({});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [joined]);
+  }, [joined, isApprovedByHost]);
 
   // ── Poll meeting state + handle new participants ───────────────────────────
   useEffect(() => {
@@ -324,7 +362,7 @@ export default function MeetingRoomClient({
 
     const poll = async () => {
       try {
-        const res = await fetch(`/api/meetings?code=${meeting.code}`);
+        const res = await fetch(`/api/meetings?code=${meeting.code}${password ? `&password=${encodeURIComponent(password)}` : ""}`);
         if (!res.ok) return;
         const data = await res.json();
 
@@ -335,11 +373,33 @@ export default function MeetingRoomClient({
           return;
         }
 
-        const list: UserInfo[] = data.participants.map((p: any) => p.user);
+        const rawParticipants = data.participants || [];
+
+        // Check if we are approved
+        const myParticipant = rawParticipants.find((p: any) => p.userId === user.id);
+        if (!isHost) {
+          if (!myParticipant) {
+            setWasDenied(true);
+            return;
+          }
+          if (myParticipant.isApproved) {
+            setIsApprovedByHost(true);
+          }
+        } else {
+          // Host tracks pending requests
+          const pending = rawParticipants.filter((p: any) => !p.isApproved);
+          setPendingParticipants(pending);
+        }
+
+        // Active list only contains approved participants
+        const list: UserInfo[] = rawParticipants
+          .filter((p: any) => p.isApproved)
+          .map((p: any) => p.user);
+        
         setActiveParticipants(list);
 
         // Call anyone who joined after us and isn't already connected
-        if (peerRef.current && peerReady) {
+        if (peerRef.current && peerReady && isApprovedByHost) {
           list
             .filter((p) => p.id !== user.id && !connectionsRef.current[p.id])
             .forEach((p) => {
@@ -507,6 +567,122 @@ export default function MeetingRoomClient({
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // SECURITY & WAITING ROOM SCREENS
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (!passwordVerified) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-[#0c0c0e] p-6 text-[#f4f4f5]">
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setPasswordError("");
+            try {
+              const res = await fetch(`/api/meetings?code=${meeting.code}&password=${encodeURIComponent(password)}`);
+              if (res.ok) {
+                setPasswordVerified(true);
+              } else {
+                setPasswordError("Invalid password. Please try again.");
+              }
+            } catch (err) {
+              setPasswordError("Error verifying password.");
+            }
+          }}
+          className="w-full max-w-md bg-[#09090b] border border-[#27272a] rounded-2xl p-8 shadow-2xl space-y-6"
+        >
+          <div className="text-center space-y-1">
+            <span className="text-[10px] font-bold text-accent tracking-wider uppercase">
+              Security Check
+            </span>
+            <h2 className="text-xl font-bold text-white tracking-tight">{meeting.title}</h2>
+            <p className="text-xs text-[#a1a1aa]">
+              This meeting is password-protected. Please enter the password to join.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <input
+              type="password"
+              placeholder="Meeting password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full input text-xs py-2 bg-[#0c0c0e] border-[#27272a] text-white outline-none focus:border-accent/50"
+              required
+            />
+            {passwordError && (
+              <p className="text-xs text-rose-500 font-semibold">{passwordError}</p>
+            )}
+          </div>
+
+          <div className="flex gap-4">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard/meetings")}
+              className="flex-1 btn-secondary py-3 text-xs font-semibold justify-center cursor-pointer"
+            >
+              Go Back
+            </button>
+            <button
+              type="submit"
+              className="flex-1 btn-primary py-3 text-xs font-semibold justify-center cursor-pointer"
+            >
+              Verify Password
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  if (wasDenied) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-[#0c0c0e] p-6 text-[#f4f4f5]">
+        <div className="w-full max-w-md bg-[#09090b] border border-[#27272a] rounded-2xl p-8 shadow-2xl space-y-6 text-center">
+          <div className="space-y-2">
+            <span className="text-[10px] font-bold text-rose-500 tracking-wider uppercase">
+              Entry Denied
+            </span>
+            <h2 className="text-xl font-bold text-white tracking-tight">Admission Refused</h2>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              The meeting host did not approve your request to join, or you have been removed from the call.
+            </p>
+          </div>
+          <button
+            onClick={() => router.push("/dashboard/meetings")}
+            className="w-full btn-primary py-3 text-xs font-semibold justify-center cursor-pointer"
+          >
+            Return to Meetings
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (joined && !isApprovedByHost) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-[#0c0c0e] p-6 text-[#f4f4f5]">
+        <div className="w-full max-w-md bg-[#09090b] border border-[#27272a] rounded-2xl p-8 shadow-2xl space-y-6 text-center">
+          <div className="space-y-3">
+            <div className="w-8 h-8 rounded-full border-2 border-t-transparent border-accent animate-spin mx-auto mb-2" />
+            <span className="text-[10px] font-bold text-accent tracking-wider uppercase animate-pulse">
+              Waiting Room
+            </span>
+            <h2 className="text-xl font-bold text-white tracking-tight">Waiting for Host</h2>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              Please wait, the host will let you in shortly.
+            </p>
+          </div>
+          <button
+            onClick={handleLeave}
+            className="w-full btn-secondary py-3 text-xs font-semibold justify-center cursor-pointer"
+          >
+            Cancel and Leave
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // LOBBY SCREEN
   // ─────────────────────────────────────────────────────────────────────────────
   if (!joined) {
@@ -635,6 +811,73 @@ export default function MeetingRoomClient({
           )}
         </button>
       </div>
+
+      {/* ── Pending Admission Requests (Host Only) ─────────────────────────── */}
+      {isHost && pendingParticipants.length > 0 && (
+        <div className="bg-[#18181b] border-b border-[#27272a] px-6 py-3 flex flex-col gap-2 relative z-20 animate-fadeInUp">
+          <span className="text-[10px] font-bold text-accent uppercase tracking-wider">
+            Pending Admission Requests ({pendingParticipants.length})
+          </span>
+          <div className="flex flex-wrap gap-3 items-center">
+            {pendingParticipants.map((part) => (
+              <div
+                key={part.id}
+                className="flex items-center gap-2 bg-[#09090b] px-3 py-1.5 rounded-xl border border-border"
+              >
+                <span className="text-xs text-white font-medium">
+                  {part.user.displayName || "Guest"}
+                </span>
+                <div className="flex gap-1.5 ml-2">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await fetch("/api/meetings", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            code: meeting.code,
+                            status: "APPROVE_PARTICIPANT",
+                            targetUserId: part.userId,
+                          }),
+                        });
+                        // update locally
+                        setPendingParticipants((prev) => prev.filter((p) => p.id !== part.id));
+                      } catch (err) {
+                        console.error("Failed to approve:", err);
+                      }
+                    }}
+                    className="px-2.5 py-1 bg-accent text-white text-[9px] font-semibold rounded-lg hover:bg-accent-hover transition-colors cursor-pointer"
+                  >
+                    Admit
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await fetch("/api/meetings", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            code: meeting.code,
+                            status: "DENY_PARTICIPANT",
+                            targetUserId: part.userId,
+                          }),
+                        });
+                        // update locally
+                        setPendingParticipants((prev) => prev.filter((p) => p.id !== part.id));
+                      } catch (err) {
+                        console.error("Failed to deny:", err);
+                      }
+                    }}
+                    className="px-2.5 py-1 bg-rose-500/20 text-rose-500 text-[9px] font-semibold rounded-lg hover:bg-rose-500/30 transition-colors cursor-pointer"
+                  >
+                    Deny
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Video grid ──────────────────────────────────────────────────────── */}
       <div className="flex-1 p-5 flex items-center justify-center overflow-hidden">

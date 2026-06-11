@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, User as UserIcon } from "lucide-react";
+import { Send, User as UserIcon, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
+import { useRouter } from "next/navigation";
 
 interface UserInfo {
   id: string;
@@ -49,11 +50,38 @@ export default function ChatWindowClient({
   conversation,
   initialMessages,
 }: ChatWindowClientProps) {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const handleDeleteChat = async () => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to permanently delete this chat and all its messages? This action cannot be undone."
+    );
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/conversations/${conversation.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        router.push("/dashboard/messages");
+        router.refresh();
+      } else {
+        alert("Failed to delete the chat.");
+      }
+    } catch (err) {
+      console.error("Error deleting conversation:", err);
+      alert("An error occurred. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Auto-scroll to bottom of page
   const scrollToBottom = () => {
@@ -70,20 +98,36 @@ export default function ChatWindowClient({
 
   // Polling for new messages every 3 seconds
   useEffect(() => {
-    const interval = setInterval(async () => {
+    let active = true;
+    const controller = new AbortController();
+
+    const poll = async () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
       try {
-        const res = await fetch(`/api/conversations/${conversation.id}/messages`);
-        if (res.ok) {
+        const res = await fetch(`/api/conversations/${conversation.id}/messages`, {
+          signal: controller.signal,
+        });
+        if (res.ok && active) {
           const data = await res.json();
           // Merge / replace history
           setMessages(data.items);
         }
-      } catch (err) {
-        console.error("Error polling messages:", err);
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          console.error("Error polling messages:", err);
+        }
       }
-    }, 3000);
+    };
 
-    return () => clearInterval(interval);
+    const interval = setInterval(poll, 3000);
+
+    return () => {
+      active = false;
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [conversation.id]);
 
   const handleSend = async (e: React.FormEvent) => {
@@ -160,6 +204,19 @@ export default function ChatWindowClient({
             )}
           </div>
         </div>
+
+        <button
+          onClick={handleDeleteChat}
+          disabled={isDeleting}
+          className="p-2 rounded-lg border border-border bg-card text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all cursor-pointer flex items-center justify-center"
+          title="Delete Chat"
+        >
+          {isDeleting ? (
+            <div className="w-4 h-4 border-2 border-t-transparent border-rose-500 rounded-full animate-spin" />
+          ) : (
+            <Trash2 className="w-4 h-4" />
+          )}
+        </button>
       </div>
 
       {/* Messages Feed Frame */}

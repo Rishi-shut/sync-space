@@ -58,27 +58,36 @@ export default function FriendsClient({ userId }: FriendsClientProps) {
   // Action states
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const fetchFriendsData = async () => {
+  const fetchFriendsData = async (signal?: AbortSignal) => {
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+      return;
+    }
     try {
-      const res = await fetch("/api/friends");
+      const res = await fetch("/api/friends", { signal });
       if (res.ok) {
         const data = await res.json();
         setFriends(data.friends || []);
         setIncoming(data.incoming || []);
         setOutgoing(data.outgoing || []);
       }
-    } catch (err) {
-      console.error("Failed to load friends:", err);
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        console.error("Failed to load friends:", err);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchFriendsData();
+    const controller = new AbortController();
+    fetchFriendsData(controller.signal);
     // Poll friends and requests list every 12 seconds to keep online states synced
-    const interval = setInterval(fetchFriendsData, 12000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => fetchFriendsData(controller.signal), 12000);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, []);
 
   const handleSendRequest = async (e: React.FormEvent) => {

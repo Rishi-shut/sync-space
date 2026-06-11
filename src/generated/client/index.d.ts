@@ -8993,6 +8993,8 @@ export namespace Prisma {
     createdById: string | null
     createdAt: Date | null
     updatedAt: Date | null
+    password: string | null
+    requireApproval: boolean | null
   }
 
   export type MeetingMaxAggregateOutputType = {
@@ -9010,6 +9012,8 @@ export namespace Prisma {
     createdById: string | null
     createdAt: Date | null
     updatedAt: Date | null
+    password: string | null
+    requireApproval: boolean | null
   }
 
   export type MeetingCountAggregateOutputType = {
@@ -9027,6 +9031,8 @@ export namespace Prisma {
     createdById: number
     createdAt: number
     updatedAt: number
+    password: number
+    requireApproval: number
     _all: number
   }
 
@@ -9054,6 +9060,8 @@ export namespace Prisma {
     createdById?: true
     createdAt?: true
     updatedAt?: true
+    password?: true
+    requireApproval?: true
   }
 
   export type MeetingMaxAggregateInputType = {
@@ -9071,6 +9079,8 @@ export namespace Prisma {
     createdById?: true
     createdAt?: true
     updatedAt?: true
+    password?: true
+    requireApproval?: true
   }
 
   export type MeetingCountAggregateInputType = {
@@ -9088,6 +9098,8 @@ export namespace Prisma {
     createdById?: true
     createdAt?: true
     updatedAt?: true
+    password?: true
+    requireApproval?: true
     _all?: true
   }
 
@@ -9192,6 +9204,8 @@ export namespace Prisma {
     createdById: string
     createdAt: Date
     updatedAt: Date
+    password: string | null
+    requireApproval: boolean
     _count: MeetingCountAggregateOutputType | null
     _avg: MeetingAvgAggregateOutputType | null
     _sum: MeetingSumAggregateOutputType | null
@@ -9228,6 +9242,8 @@ export namespace Prisma {
     createdById?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    password?: boolean
+    requireApproval?: boolean
     createdBy?: boolean | UserDefaultArgs<ExtArgs>
     participants?: boolean | Meeting$participantsArgs<ExtArgs>
     _count?: boolean | MeetingCountOutputTypeDefaultArgs<ExtArgs>
@@ -9248,6 +9264,8 @@ export namespace Prisma {
     createdById?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    password?: boolean
+    requireApproval?: boolean
     createdBy?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["meeting"]>
 
@@ -9266,6 +9284,8 @@ export namespace Prisma {
     createdById?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    password?: boolean
+    requireApproval?: boolean
     createdBy?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["meeting"]>
 
@@ -9284,9 +9304,11 @@ export namespace Prisma {
     createdById?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    password?: boolean
+    requireApproval?: boolean
   }
 
-  export type MeetingOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "description" | "code" | "status" | "type" | "scheduledAt" | "startedAt" | "endedAt" | "maxParticipants" | "isRecording" | "createdById" | "createdAt" | "updatedAt", ExtArgs["result"]["meeting"]>
+  export type MeetingOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "description" | "code" | "status" | "type" | "scheduledAt" | "startedAt" | "endedAt" | "maxParticipants" | "isRecording" | "createdById" | "createdAt" | "updatedAt" | "password" | "requireApproval", ExtArgs["result"]["meeting"]>
   export type MeetingInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     createdBy?: boolean | UserDefaultArgs<ExtArgs>
     participants?: boolean | Meeting$participantsArgs<ExtArgs>
@@ -9320,6 +9342,8 @@ export namespace Prisma {
       createdById: string
       createdAt: Date
       updatedAt: Date
+      password: string | null
+      requireApproval: boolean
     }, ExtArgs["result"]["meeting"]>
     composites: {}
   }
@@ -9759,6 +9783,8 @@ export namespace Prisma {
     readonly createdById: FieldRef<"Meeting", 'String'>
     readonly createdAt: FieldRef<"Meeting", 'DateTime'>
     readonly updatedAt: FieldRef<"Meeting", 'DateTime'>
+    readonly password: FieldRef<"Meeting", 'String'>
+    readonly requireApproval: FieldRef<"Meeting", 'Boolean'>
   }
     
 
@@ -10220,6 +10246,7 @@ export namespace Prisma {
     isMuted: boolean | null
     isCameraOff: boolean | null
     isScreenSharing: boolean | null
+    isApproved: boolean | null
     joinedAt: Date | null
     leftAt: Date | null
   }
@@ -10232,6 +10259,7 @@ export namespace Prisma {
     isMuted: boolean | null
     isCameraOff: boolean | null
     isScreenSharing: boolean | null
+    isApproved: boolean | null
     joinedAt: Date | null
     leftAt: Date | null
   }
@@ -10244,6 +10272,7 @@ export namespace Prisma {
     isMuted: number
     isCameraOff: number
     isScreenSharing: number
+    isApproved: number
     joinedAt: number
     leftAt: number
     _all: number
@@ -10258,6 +10287,7 @@ export namespace Prisma {
     isMuted?: true
     isCameraOff?: true
     isScreenSharing?: true
+    isApproved?: true
     joinedAt?: true
     leftAt?: true
   }
@@ -10270,6 +10300,7 @@ export namespace Prisma {
     isMuted?: true
     isCameraOff?: true
     isScreenSharing?: true
+    isApproved?: true
     joinedAt?: true
     leftAt?: true
   }
@@ -10282,6 +10313,7 @@ export namespace Prisma {
     isMuted?: true
     isCameraOff?: true
     isScreenSharing?: true
+    isApproved?: true
     joinedAt?: true
     leftAt?: true
     _all?: true
@@ -10367,6 +10399,7 @@ export namespace Prisma {
     isMuted: boolean
     isCameraOff: boolean
     isScreenSharing: boolean
+    isApproved: boolean
     joinedAt: Date
     leftAt: Date | null
     _count: MeetingParticipantCountAggregateOutputType | null
@@ -10396,6 +10429,7 @@ export namespace Prisma {
     isMuted?: boolean
     isCameraOff?: boolean
     isScreenSharing?: boolean
+    isApproved?: boolean
     joinedAt?: boolean
     leftAt?: boolean
     meeting?: boolean | MeetingDefaultArgs<ExtArgs>
@@ -10410,6 +10444,7 @@ export namespace Prisma {
     isMuted?: boolean
     isCameraOff?: boolean
     isScreenSharing?: boolean
+    isApproved?: boolean
     joinedAt?: boolean
     leftAt?: boolean
     meeting?: boolean | MeetingDefaultArgs<ExtArgs>
@@ -10424,6 +10459,7 @@ export namespace Prisma {
     isMuted?: boolean
     isCameraOff?: boolean
     isScreenSharing?: boolean
+    isApproved?: boolean
     joinedAt?: boolean
     leftAt?: boolean
     meeting?: boolean | MeetingDefaultArgs<ExtArgs>
@@ -10438,11 +10474,12 @@ export namespace Prisma {
     isMuted?: boolean
     isCameraOff?: boolean
     isScreenSharing?: boolean
+    isApproved?: boolean
     joinedAt?: boolean
     leftAt?: boolean
   }
 
-  export type MeetingParticipantOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "meetingId" | "userId" | "role" | "isMuted" | "isCameraOff" | "isScreenSharing" | "joinedAt" | "leftAt", ExtArgs["result"]["meetingParticipant"]>
+  export type MeetingParticipantOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "meetingId" | "userId" | "role" | "isMuted" | "isCameraOff" | "isScreenSharing" | "isApproved" | "joinedAt" | "leftAt", ExtArgs["result"]["meetingParticipant"]>
   export type MeetingParticipantInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     meeting?: boolean | MeetingDefaultArgs<ExtArgs>
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -10470,6 +10507,7 @@ export namespace Prisma {
       isMuted: boolean
       isCameraOff: boolean
       isScreenSharing: boolean
+      isApproved: boolean
       joinedAt: Date
       leftAt: Date | null
     }, ExtArgs["result"]["meetingParticipant"]>
@@ -10904,6 +10942,7 @@ export namespace Prisma {
     readonly isMuted: FieldRef<"MeetingParticipant", 'Boolean'>
     readonly isCameraOff: FieldRef<"MeetingParticipant", 'Boolean'>
     readonly isScreenSharing: FieldRef<"MeetingParticipant", 'Boolean'>
+    readonly isApproved: FieldRef<"MeetingParticipant", 'Boolean'>
     readonly joinedAt: FieldRef<"MeetingParticipant", 'DateTime'>
     readonly leftAt: FieldRef<"MeetingParticipant", 'DateTime'>
   }
@@ -12521,7 +12560,9 @@ export namespace Prisma {
     isRecording: 'isRecording',
     createdById: 'createdById',
     createdAt: 'createdAt',
-    updatedAt: 'updatedAt'
+    updatedAt: 'updatedAt',
+    password: 'password',
+    requireApproval: 'requireApproval'
   };
 
   export type MeetingScalarFieldEnum = (typeof MeetingScalarFieldEnum)[keyof typeof MeetingScalarFieldEnum]
@@ -12535,6 +12576,7 @@ export namespace Prisma {
     isMuted: 'isMuted',
     isCameraOff: 'isCameraOff',
     isScreenSharing: 'isScreenSharing',
+    isApproved: 'isApproved',
     joinedAt: 'joinedAt',
     leftAt: 'leftAt'
   };
@@ -13251,6 +13293,8 @@ export namespace Prisma {
     createdById?: StringFilter<"Meeting"> | string
     createdAt?: DateTimeFilter<"Meeting"> | Date | string
     updatedAt?: DateTimeFilter<"Meeting"> | Date | string
+    password?: StringNullableFilter<"Meeting"> | string | null
+    requireApproval?: BoolFilter<"Meeting"> | boolean
     createdBy?: XOR<UserScalarRelationFilter, UserWhereInput>
     participants?: MeetingParticipantListRelationFilter
   }
@@ -13270,6 +13314,8 @@ export namespace Prisma {
     createdById?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    password?: SortOrderInput | SortOrder
+    requireApproval?: SortOrder
     createdBy?: UserOrderByWithRelationInput
     participants?: MeetingParticipantOrderByRelationAggregateInput
   }
@@ -13292,6 +13338,8 @@ export namespace Prisma {
     createdById?: StringFilter<"Meeting"> | string
     createdAt?: DateTimeFilter<"Meeting"> | Date | string
     updatedAt?: DateTimeFilter<"Meeting"> | Date | string
+    password?: StringNullableFilter<"Meeting"> | string | null
+    requireApproval?: BoolFilter<"Meeting"> | boolean
     createdBy?: XOR<UserScalarRelationFilter, UserWhereInput>
     participants?: MeetingParticipantListRelationFilter
   }, "id" | "code">
@@ -13311,6 +13359,8 @@ export namespace Prisma {
     createdById?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    password?: SortOrderInput | SortOrder
+    requireApproval?: SortOrder
     _count?: MeetingCountOrderByAggregateInput
     _avg?: MeetingAvgOrderByAggregateInput
     _max?: MeetingMaxOrderByAggregateInput
@@ -13336,6 +13386,8 @@ export namespace Prisma {
     createdById?: StringWithAggregatesFilter<"Meeting"> | string
     createdAt?: DateTimeWithAggregatesFilter<"Meeting"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Meeting"> | Date | string
+    password?: StringNullableWithAggregatesFilter<"Meeting"> | string | null
+    requireApproval?: BoolWithAggregatesFilter<"Meeting"> | boolean
   }
 
   export type MeetingParticipantWhereInput = {
@@ -13349,6 +13401,7 @@ export namespace Prisma {
     isMuted?: BoolFilter<"MeetingParticipant"> | boolean
     isCameraOff?: BoolFilter<"MeetingParticipant"> | boolean
     isScreenSharing?: BoolFilter<"MeetingParticipant"> | boolean
+    isApproved?: BoolFilter<"MeetingParticipant"> | boolean
     joinedAt?: DateTimeFilter<"MeetingParticipant"> | Date | string
     leftAt?: DateTimeNullableFilter<"MeetingParticipant"> | Date | string | null
     meeting?: XOR<MeetingScalarRelationFilter, MeetingWhereInput>
@@ -13363,6 +13416,7 @@ export namespace Prisma {
     isMuted?: SortOrder
     isCameraOff?: SortOrder
     isScreenSharing?: SortOrder
+    isApproved?: SortOrder
     joinedAt?: SortOrder
     leftAt?: SortOrderInput | SortOrder
     meeting?: MeetingOrderByWithRelationInput
@@ -13381,6 +13435,7 @@ export namespace Prisma {
     isMuted?: BoolFilter<"MeetingParticipant"> | boolean
     isCameraOff?: BoolFilter<"MeetingParticipant"> | boolean
     isScreenSharing?: BoolFilter<"MeetingParticipant"> | boolean
+    isApproved?: BoolFilter<"MeetingParticipant"> | boolean
     joinedAt?: DateTimeFilter<"MeetingParticipant"> | Date | string
     leftAt?: DateTimeNullableFilter<"MeetingParticipant"> | Date | string | null
     meeting?: XOR<MeetingScalarRelationFilter, MeetingWhereInput>
@@ -13395,6 +13450,7 @@ export namespace Prisma {
     isMuted?: SortOrder
     isCameraOff?: SortOrder
     isScreenSharing?: SortOrder
+    isApproved?: SortOrder
     joinedAt?: SortOrder
     leftAt?: SortOrderInput | SortOrder
     _count?: MeetingParticipantCountOrderByAggregateInput
@@ -13413,6 +13469,7 @@ export namespace Prisma {
     isMuted?: BoolWithAggregatesFilter<"MeetingParticipant"> | boolean
     isCameraOff?: BoolWithAggregatesFilter<"MeetingParticipant"> | boolean
     isScreenSharing?: BoolWithAggregatesFilter<"MeetingParticipant"> | boolean
+    isApproved?: BoolWithAggregatesFilter<"MeetingParticipant"> | boolean
     joinedAt?: DateTimeWithAggregatesFilter<"MeetingParticipant"> | Date | string
     leftAt?: DateTimeNullableWithAggregatesFilter<"MeetingParticipant"> | Date | string | null
   }
@@ -14000,6 +14057,8 @@ export namespace Prisma {
     isRecording?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
+    password?: string | null
+    requireApproval?: boolean
     createdBy: UserCreateNestedOneWithoutCreatedMeetingsInput
     participants?: MeetingParticipantCreateNestedManyWithoutMeetingInput
   }
@@ -14019,6 +14078,8 @@ export namespace Prisma {
     createdById: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    password?: string | null
+    requireApproval?: boolean
     participants?: MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput
   }
 
@@ -14036,6 +14097,8 @@ export namespace Prisma {
     isRecording?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    requireApproval?: BoolFieldUpdateOperationsInput | boolean
     createdBy?: UserUpdateOneRequiredWithoutCreatedMeetingsNestedInput
     participants?: MeetingParticipantUpdateManyWithoutMeetingNestedInput
   }
@@ -14055,6 +14118,8 @@ export namespace Prisma {
     createdById?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    requireApproval?: BoolFieldUpdateOperationsInput | boolean
     participants?: MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput
   }
 
@@ -14073,6 +14138,8 @@ export namespace Prisma {
     createdById: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    password?: string | null
+    requireApproval?: boolean
   }
 
   export type MeetingUpdateManyMutationInput = {
@@ -14089,6 +14156,8 @@ export namespace Prisma {
     isRecording?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    requireApproval?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type MeetingUncheckedUpdateManyInput = {
@@ -14106,6 +14175,8 @@ export namespace Prisma {
     createdById?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    requireApproval?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type MeetingParticipantCreateInput = {
@@ -14114,6 +14185,7 @@ export namespace Prisma {
     isMuted?: boolean
     isCameraOff?: boolean
     isScreenSharing?: boolean
+    isApproved?: boolean
     joinedAt?: Date | string
     leftAt?: Date | string | null
     meeting: MeetingCreateNestedOneWithoutParticipantsInput
@@ -14128,6 +14200,7 @@ export namespace Prisma {
     isMuted?: boolean
     isCameraOff?: boolean
     isScreenSharing?: boolean
+    isApproved?: boolean
     joinedAt?: Date | string
     leftAt?: Date | string | null
   }
@@ -14138,6 +14211,7 @@ export namespace Prisma {
     isMuted?: BoolFieldUpdateOperationsInput | boolean
     isCameraOff?: BoolFieldUpdateOperationsInput | boolean
     isScreenSharing?: BoolFieldUpdateOperationsInput | boolean
+    isApproved?: BoolFieldUpdateOperationsInput | boolean
     joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     leftAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     meeting?: MeetingUpdateOneRequiredWithoutParticipantsNestedInput
@@ -14152,6 +14226,7 @@ export namespace Prisma {
     isMuted?: BoolFieldUpdateOperationsInput | boolean
     isCameraOff?: BoolFieldUpdateOperationsInput | boolean
     isScreenSharing?: BoolFieldUpdateOperationsInput | boolean
+    isApproved?: BoolFieldUpdateOperationsInput | boolean
     joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     leftAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
@@ -14164,6 +14239,7 @@ export namespace Prisma {
     isMuted?: boolean
     isCameraOff?: boolean
     isScreenSharing?: boolean
+    isApproved?: boolean
     joinedAt?: Date | string
     leftAt?: Date | string | null
   }
@@ -14174,6 +14250,7 @@ export namespace Prisma {
     isMuted?: BoolFieldUpdateOperationsInput | boolean
     isCameraOff?: BoolFieldUpdateOperationsInput | boolean
     isScreenSharing?: BoolFieldUpdateOperationsInput | boolean
+    isApproved?: BoolFieldUpdateOperationsInput | boolean
     joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     leftAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
@@ -14186,6 +14263,7 @@ export namespace Prisma {
     isMuted?: BoolFieldUpdateOperationsInput | boolean
     isCameraOff?: BoolFieldUpdateOperationsInput | boolean
     isScreenSharing?: BoolFieldUpdateOperationsInput | boolean
+    isApproved?: BoolFieldUpdateOperationsInput | boolean
     joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     leftAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
@@ -14816,6 +14894,8 @@ export namespace Prisma {
     createdById?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    password?: SortOrder
+    requireApproval?: SortOrder
   }
 
   export type MeetingAvgOrderByAggregateInput = {
@@ -14837,6 +14917,8 @@ export namespace Prisma {
     createdById?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    password?: SortOrder
+    requireApproval?: SortOrder
   }
 
   export type MeetingMinOrderByAggregateInput = {
@@ -14854,6 +14936,8 @@ export namespace Prisma {
     createdById?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    password?: SortOrder
+    requireApproval?: SortOrder
   }
 
   export type MeetingSumOrderByAggregateInput = {
@@ -14905,6 +14989,7 @@ export namespace Prisma {
     isMuted?: SortOrder
     isCameraOff?: SortOrder
     isScreenSharing?: SortOrder
+    isApproved?: SortOrder
     joinedAt?: SortOrder
     leftAt?: SortOrder
   }
@@ -14917,6 +15002,7 @@ export namespace Prisma {
     isMuted?: SortOrder
     isCameraOff?: SortOrder
     isScreenSharing?: SortOrder
+    isApproved?: SortOrder
     joinedAt?: SortOrder
     leftAt?: SortOrder
   }
@@ -14929,6 +15015,7 @@ export namespace Prisma {
     isMuted?: SortOrder
     isCameraOff?: SortOrder
     isScreenSharing?: SortOrder
+    isApproved?: SortOrder
     joinedAt?: SortOrder
     leftAt?: SortOrder
   }
@@ -16224,6 +16311,7 @@ export namespace Prisma {
     isMuted?: boolean
     isCameraOff?: boolean
     isScreenSharing?: boolean
+    isApproved?: boolean
     joinedAt?: Date | string
     leftAt?: Date | string | null
     meeting: MeetingCreateNestedOneWithoutParticipantsInput
@@ -16236,6 +16324,7 @@ export namespace Prisma {
     isMuted?: boolean
     isCameraOff?: boolean
     isScreenSharing?: boolean
+    isApproved?: boolean
     joinedAt?: Date | string
     leftAt?: Date | string | null
   }
@@ -16264,6 +16353,8 @@ export namespace Prisma {
     isRecording?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
+    password?: string | null
+    requireApproval?: boolean
     participants?: MeetingParticipantCreateNestedManyWithoutMeetingInput
   }
 
@@ -16281,6 +16372,8 @@ export namespace Prisma {
     isRecording?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
+    password?: string | null
+    requireApproval?: boolean
     participants?: MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput
   }
 
@@ -16489,6 +16582,7 @@ export namespace Prisma {
     isMuted?: BoolFilter<"MeetingParticipant"> | boolean
     isCameraOff?: BoolFilter<"MeetingParticipant"> | boolean
     isScreenSharing?: BoolFilter<"MeetingParticipant"> | boolean
+    isApproved?: BoolFilter<"MeetingParticipant"> | boolean
     joinedAt?: DateTimeFilter<"MeetingParticipant"> | Date | string
     leftAt?: DateTimeNullableFilter<"MeetingParticipant"> | Date | string | null
   }
@@ -16527,6 +16621,8 @@ export namespace Prisma {
     createdById?: StringFilter<"Meeting"> | string
     createdAt?: DateTimeFilter<"Meeting"> | Date | string
     updatedAt?: DateTimeFilter<"Meeting"> | Date | string
+    password?: StringNullableFilter<"Meeting"> | string | null
+    requireApproval?: BoolFilter<"Meeting"> | boolean
   }
 
   export type ReactionUpsertWithWhereUniqueWithoutUserInput = {
@@ -17667,6 +17763,7 @@ export namespace Prisma {
     isMuted?: boolean
     isCameraOff?: boolean
     isScreenSharing?: boolean
+    isApproved?: boolean
     joinedAt?: Date | string
     leftAt?: Date | string | null
     user: UserCreateNestedOneWithoutMeetingParticipantsInput
@@ -17679,6 +17776,7 @@ export namespace Prisma {
     isMuted?: boolean
     isCameraOff?: boolean
     isScreenSharing?: boolean
+    isApproved?: boolean
     joinedAt?: Date | string
     leftAt?: Date | string | null
   }
@@ -17776,6 +17874,8 @@ export namespace Prisma {
     isRecording?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
+    password?: string | null
+    requireApproval?: boolean
     createdBy: UserCreateNestedOneWithoutCreatedMeetingsInput
   }
 
@@ -17794,6 +17894,8 @@ export namespace Prisma {
     createdById: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    password?: string | null
+    requireApproval?: boolean
   }
 
   export type MeetingCreateOrConnectWithoutParticipantsInput = {
@@ -17873,6 +17975,8 @@ export namespace Prisma {
     isRecording?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    requireApproval?: BoolFieldUpdateOperationsInput | boolean
     createdBy?: UserUpdateOneRequiredWithoutCreatedMeetingsNestedInput
   }
 
@@ -17891,6 +17995,8 @@ export namespace Prisma {
     createdById?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    requireApproval?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type UserUpsertWithoutMeetingParticipantsInput = {
@@ -18175,6 +18281,7 @@ export namespace Prisma {
     isMuted?: boolean
     isCameraOff?: boolean
     isScreenSharing?: boolean
+    isApproved?: boolean
     joinedAt?: Date | string
     leftAt?: Date | string | null
   }
@@ -18193,6 +18300,8 @@ export namespace Prisma {
     isRecording?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
+    password?: string | null
+    requireApproval?: boolean
   }
 
   export type ReactionCreateManyUserInput = {
@@ -18306,6 +18415,7 @@ export namespace Prisma {
     isMuted?: BoolFieldUpdateOperationsInput | boolean
     isCameraOff?: BoolFieldUpdateOperationsInput | boolean
     isScreenSharing?: BoolFieldUpdateOperationsInput | boolean
+    isApproved?: BoolFieldUpdateOperationsInput | boolean
     joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     leftAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     meeting?: MeetingUpdateOneRequiredWithoutParticipantsNestedInput
@@ -18318,6 +18428,7 @@ export namespace Prisma {
     isMuted?: BoolFieldUpdateOperationsInput | boolean
     isCameraOff?: BoolFieldUpdateOperationsInput | boolean
     isScreenSharing?: BoolFieldUpdateOperationsInput | boolean
+    isApproved?: BoolFieldUpdateOperationsInput | boolean
     joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     leftAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
@@ -18329,6 +18440,7 @@ export namespace Prisma {
     isMuted?: BoolFieldUpdateOperationsInput | boolean
     isCameraOff?: BoolFieldUpdateOperationsInput | boolean
     isScreenSharing?: BoolFieldUpdateOperationsInput | boolean
+    isApproved?: BoolFieldUpdateOperationsInput | boolean
     joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     leftAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
@@ -18347,6 +18459,8 @@ export namespace Prisma {
     isRecording?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    requireApproval?: BoolFieldUpdateOperationsInput | boolean
     participants?: MeetingParticipantUpdateManyWithoutMeetingNestedInput
   }
 
@@ -18364,6 +18478,8 @@ export namespace Prisma {
     isRecording?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    requireApproval?: BoolFieldUpdateOperationsInput | boolean
     participants?: MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput
   }
 
@@ -18381,6 +18497,8 @@ export namespace Prisma {
     isRecording?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    requireApproval?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type ReactionUpdateWithoutUserInput = {
@@ -18705,6 +18823,7 @@ export namespace Prisma {
     isMuted?: boolean
     isCameraOff?: boolean
     isScreenSharing?: boolean
+    isApproved?: boolean
     joinedAt?: Date | string
     leftAt?: Date | string | null
   }
@@ -18715,6 +18834,7 @@ export namespace Prisma {
     isMuted?: BoolFieldUpdateOperationsInput | boolean
     isCameraOff?: BoolFieldUpdateOperationsInput | boolean
     isScreenSharing?: BoolFieldUpdateOperationsInput | boolean
+    isApproved?: BoolFieldUpdateOperationsInput | boolean
     joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     leftAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     user?: UserUpdateOneRequiredWithoutMeetingParticipantsNestedInput
@@ -18727,6 +18847,7 @@ export namespace Prisma {
     isMuted?: BoolFieldUpdateOperationsInput | boolean
     isCameraOff?: BoolFieldUpdateOperationsInput | boolean
     isScreenSharing?: BoolFieldUpdateOperationsInput | boolean
+    isApproved?: BoolFieldUpdateOperationsInput | boolean
     joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     leftAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
@@ -18738,6 +18859,7 @@ export namespace Prisma {
     isMuted?: BoolFieldUpdateOperationsInput | boolean
     isCameraOff?: BoolFieldUpdateOperationsInput | boolean
     isScreenSharing?: BoolFieldUpdateOperationsInput | boolean
+    isApproved?: BoolFieldUpdateOperationsInput | boolean
     joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     leftAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
