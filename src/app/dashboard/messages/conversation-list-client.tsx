@@ -131,7 +131,7 @@ export default function ConversationListClient({ userId }: ConversationListClien
   });
 
   return (
-    <div className="w-80 h-full border-r border-border bg-background flex flex-col relative z-10 select-none">
+    <div className={`w-full md:w-80 h-full border-r border-border bg-background flex flex-col relative z-10 select-none ${activeId ? "hidden md:flex" : "flex"}`}>
       {/* Header with Search and New Chat button */}
       <div className="p-4 space-y-3 border-b border-border/60">
         <div className="flex items-center justify-between">

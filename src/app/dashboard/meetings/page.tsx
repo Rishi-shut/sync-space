@@ -51,7 +51,7 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
       </div>
 
       {/* Start / Join widget */}
-      <div className="max-w-3xl">
+      <div className="w-full">
         <MeetingActionsClient />
       </div>
 

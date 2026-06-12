@@ -765,14 +765,15 @@ export default function MeetingRoomClient({
   const totalParticipants = 1 + remotePeerList.length;
 
   // Grid columns: 1 person → centred solo tile, 2 → 2 cols, 3-4 → 2 cols, 5+ → 3 cols
+  // Adjusted for responsiveness on mobile (stacked/narrower column layouts)
   const gridCols =
     totalParticipants === 1
       ? "grid-cols-1 max-w-xl"
       : totalParticipants === 2
-      ? "grid-cols-2 max-w-4xl"
+      ? "grid-cols-1 md:grid-cols-2 max-w-4xl"
       : totalParticipants <= 4
       ? "grid-cols-2 max-w-5xl"
-      : "grid-cols-3 max-w-6xl";
+      : "grid-cols-2 md:grid-cols-3 max-w-6xl";
 
   return (
     <div className="w-full h-full flex flex-col bg-[#0c0c0e] text-[#f4f4f5] relative overflow-hidden">
@@ -879,12 +880,11 @@ export default function MeetingRoomClient({
         </div>
       )}
 
-      {/* ── Video grid ──────────────────────────────────────────────────────── */}
       <div className="flex-1 p-5 flex items-center justify-center overflow-hidden">
         {screenSharing ? (
-          /* Screen share layout */
-          <div className="w-full h-full grid grid-cols-4 gap-4">
-            <div className="col-span-3 rounded-2xl overflow-hidden border border-[#27272a] bg-black relative">
+          /* Screen share layout - stacked on mobile, side-by-side on desktop */
+          <div className="w-full h-full flex flex-col md:grid md:grid-cols-4 gap-4 overflow-y-auto md:overflow-hidden">
+            <div className="w-full h-auto md:h-full md:col-span-3 aspect-video md:aspect-auto rounded-2xl overflow-hidden border border-[#27272a] bg-black relative flex-shrink-0">
               <video
                 ref={screenVideoRef}
                 autoPlay
@@ -896,16 +896,20 @@ export default function MeetingRoomClient({
               </div>
             </div>
 
-            <div className="col-span-1 flex flex-col gap-3 overflow-y-auto">
+            <div className="w-full md:h-full md:col-span-1 flex flex-row md:flex-col gap-3 overflow-x-auto md:overflow-y-auto pb-2 md:pb-0 flex-shrink-0">
               {/* Self tile (small sidebar) */}
-              <SelfTile
-                videoRef={localVideoRef}
-                camActive={camActive}
-                displayName={user.displayName}
-                isHost={meeting.createdById === user.id}
-              />
+              <div className="w-48 md:w-full flex-shrink-0">
+                <SelfTile
+                  videoRef={localVideoRef}
+                  camActive={camActive}
+                  displayName={user.displayName}
+                  isHost={meeting.createdById === user.id}
+                />
+              </div>
               {remotePeerList.map((peer) => (
-                <RemoteVideo key={peer.userId} peer={peer} />
+                <div key={peer.userId} className="w-48 md:w-full flex-shrink-0">
+                  <RemoteVideo peer={peer} />
+                </div>
               ))}
             </div>
           </div>

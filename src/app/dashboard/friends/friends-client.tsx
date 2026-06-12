@@ -499,7 +499,7 @@ export default function FriendsClient({ userId }: FriendsClientProps) {
 
             {/* ─── Tab: Add Friend ─────────────────── */}
             {activeTab === "add" && (
-              <div className="max-w-xl">
+              <div className="max-w-xl mx-auto">
                 <div className="p-6 rounded-2xl border border-border bg-card/80 backdrop-blur-sm space-y-6">
                   <div className="space-y-1">
                     <h3 className="text-sm font-semibold text-text-primary">Add Friend by Email</h3>

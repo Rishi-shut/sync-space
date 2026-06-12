@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import ConversationListClient from "./conversation-list-client";
+import ChatViewportClient from "./chat-viewport-client";
 
 export default async function MessagesLayout({
   children,
@@ -27,9 +28,9 @@ export default async function MessagesLayout({
       <ConversationListClient userId={dbUser.id} />
 
       {/* Main chat viewport */}
-      <div className="flex-1 h-full overflow-hidden bg-background">
+      <ChatViewportClient>
         {children}
-      </div>
+      </ChatViewportClient>
     </div>
   );
 }

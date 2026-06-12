@@ -61,7 +61,7 @@ function Navbar() {
         scrolled ? "landing-nav-scrolled" : "landing-nav-top"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-16">
+      <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-16">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 group" id="nav-logo">
           <div className="landing-logo-icon">
@@ -349,7 +349,7 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <section className="relative z-10 min-h-screen flex items-center justify-center px-6 pt-24 pb-16">
-        <div className="max-w-5xl mx-auto text-center">
+        <div className="max-w-6xl mx-auto text-center">
           {/* Eyebrow badge */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -439,7 +439,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Dashboard Preview ── */}
-      <section className="relative z-10 px-6 pb-32">
+      <section className="relative z-10 px-6 pb-40">
         <motion.div
           initial={{ opacity: 0, y: 48 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -452,8 +452,8 @@ export default function LandingPage() {
       </section>
 
       {/* ── Social Proof Stats ── */}
-      <section className="relative z-10 px-6 py-20">
-        <div className="max-w-4xl mx-auto">
+      <section className="relative z-10 px-6 py-24">
+        <div className="max-w-6xl mx-auto">
           <div className="landing-stats-grid">
             <AnimatedStat value={99.9} label="Uptime SLA" suffix="%" />
             <AnimatedStat value={50} label="ms message latency" suffix="ms" />
@@ -463,8 +463,13 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Section divider */}
+      <div className="relative z-10 max-w-6xl mx-auto px-6">
+        <div className="landing-section-divider" />
+      </div>
+
       {/* ── Features ── */}
-      <section id="features" className="relative z-10 px-6 py-28">
+      <section id="features" className="relative z-10 px-6 py-36">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -532,8 +537,13 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Section divider */}
+      <div className="relative z-10 max-w-6xl mx-auto px-6">
+        <div className="landing-section-divider" />
+      </div>
+
       {/* ── AI Section ── */}
-      <section id="ai" className="relative z-10 px-6 py-28">
+      <section id="ai" className="relative z-10 px-6 py-36">
         <div className="max-w-6xl mx-auto">
           <div className="landing-ai-section">
             {/* Text */}
@@ -618,8 +628,13 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Section divider */}
+      <div className="relative z-10 max-w-6xl mx-auto px-6">
+        <div className="landing-section-divider" />
+      </div>
+
       {/* ── Security Section ── */}
-      <section id="security" className="relative z-10 px-6 py-28">
+      <section id="security" className="relative z-10 px-6 py-36">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -696,8 +711,13 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Section divider */}
+      <div className="relative z-10 max-w-6xl mx-auto px-6">
+        <div className="landing-section-divider" />
+      </div>
+
       {/* ── Testimonials ── */}
-      <section className="relative z-10 px-6 py-28">
+      <section className="relative z-10 px-6 py-36">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -739,8 +759,13 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Section divider */}
+      <div className="relative z-10 max-w-6xl mx-auto px-6">
+        <div className="landing-section-divider" />
+      </div>
+
       {/* ── Final CTA ── */}
-      <section className="relative z-10 px-6 py-32">
+      <section className="relative z-10 px-6 py-40">
         <motion.div
           initial={{ opacity: 0, y: 32 }}
           whileInView={{ opacity: 1, y: 0 }}

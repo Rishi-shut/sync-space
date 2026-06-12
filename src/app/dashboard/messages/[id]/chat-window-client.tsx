@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, User as UserIcon, Trash2 } from "lucide-react";
+import { Send, User as UserIcon, Trash2, ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface UserInfo {
   id: string;
@@ -167,6 +168,13 @@ export default function ChatWindowClient({
       {/* Top Header Panel */}
       <div className="h-16 px-6 border-b border-border flex items-center justify-between bg-card">
         <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard/messages"
+            className="md:hidden p-1.5 rounded-lg border border-border bg-card text-text-secondary hover:text-text-primary hover:bg-card-hover transition-colors mr-1 flex items-center justify-center animate-fadeIn"
+            title="Back to Chats"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
           <div className="relative">
             <div className="w-8 h-8 rounded-lg overflow-hidden border border-border relative">
               {isDirect && partner?.imageUrl ? (
