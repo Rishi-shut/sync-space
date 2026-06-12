@@ -1,11 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Video, Plus, ArrowRight, Calendar } from "lucide-react";
+import { useUIStore } from "@/stores/ui-store";
 
 export default function MeetingActionsClient() {
   const router = useRouter();
+  const { addToast } = useUIStore();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("ended") === "true") {
+      addToast("The meeting has been ended by the host.", "info", 5000);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [addToast]);
   
   // Instant Meeting States
   const [showSettings, setShowSettings] = useState(false);
