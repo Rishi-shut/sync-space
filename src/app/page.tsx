@@ -711,53 +711,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Section divider */}
-      <div className="relative z-10 max-w-6xl mx-auto px-6">
-        <div className="landing-section-divider" />
-      </div>
-
-      {/* ── Testimonials ── */}
-      <section className="relative z-10 px-6 py-36">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.55 }}
-            className="landing-section-header"
-          >
-            <div className="landing-section-tag">Testimonials</div>
-            <h2 className="landing-section-title">
-              Loved by teams<br />
-              <span className="landing-headline-accent">around the world</span>
-            </h2>
-          </motion.div>
-
-          <div className="landing-testimonials-grid">
-            <TestimonialCard
-              quote="SyncSpace replaced 4 different tools for our team. The AI summaries alone save us hours every week."
-              name="Priya Sharma"
-              role="Engineering Lead"
-              company="Veritas Tech"
-              delay={0}
-            />
-            <TestimonialCard
-              quote="The meeting room experience is genuinely the best I've used. Clean, fast, and the security controls are exactly what we needed."
-              name="Marcus Webb"
-              role="Head of Product"
-              company="Fount Studio"
-              delay={0.1}
-            />
-            <TestimonialCard
-              quote="Switching from Slack + Zoom was scary, but onboarding took minutes. The interface is intuitive and beautiful."
-              name="Yuki Tanaka"
-              role="Operations Manager"
-              company="Kira Labs"
-              delay={0.2}
-            />
-          </div>
-        </div>
-      </section>
 
       {/* Section divider */}
       <div className="relative z-10 max-w-6xl mx-auto px-6">
