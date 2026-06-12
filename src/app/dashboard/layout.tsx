@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import Sidebar from "@/components/layout/sidebar";
 import Navbar from "@/components/layout/navbar";
-import CommandPalette from "@/components/layout/command-palette";
 import PageTransition from "@/components/layout/page-transition";
 
 export default async function DashboardLayout({
@@ -38,9 +37,6 @@ export default async function DashboardLayout({
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
-
-      {/* Global Command Palette */}
-      <CommandPalette />
     </div>
   );
 }

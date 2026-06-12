@@ -1,9 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Search, Bell, Sun, Moon, Menu, Check } from "lucide-react";
+import {
+  Search,
+  Bell,
+  Sun,
+  Moon,
+  Menu,
+  Check,
+  LayoutDashboard,
+  MessageSquare,
+  Video as VideoIcon,
+  Settings as SettingsIcon,
+} from "lucide-react";
 import { useUIStore } from "@/stores/ui-store";
 
 interface NavbarProps {
@@ -18,12 +29,30 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const { toggleSidebar, setCommandPaletteOpen } = useUIStore();
+  const { toggleSidebar } = useUIStore();
   
   const [status, setStatus] = useState(user.status);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // Inline search states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  const searchItems = [
+    { label: "Go to Dashboard", category: "Navigation", icon: LayoutDashboard, action: () => router.push("/dashboard") },
+    { label: "Go to Messages", category: "Navigation", icon: MessageSquare, action: () => router.push("/dashboard/messages") },
+    { label: "Go to Meetings", category: "Navigation", icon: VideoIcon, action: () => router.push("/dashboard/meetings") },
+    { label: "Go to Settings", category: "Navigation", icon: SettingsIcon, action: () => router.push("/dashboard/settings") },
+    { label: "Toggle Dark Theme", category: "Appearance", icon: Moon, action: () => setTheme("dark") },
+    { label: "Toggle Light Theme", category: "Appearance", icon: Sun, action: () => setTheme("light") },
+  ];
+
+  const filteredSearchItems = searchItems.filter((item) =>
+    item.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -73,20 +102,52 @@ export default function Navbar({ user }: NavbarProps) {
         </h1>
       </div>
 
-      {/* Center: Search / Command Palette trigger */}
-      <div className="hidden sm:block max-w-md w-72 md:w-96">
-        <button
-          onClick={() => setCommandPaletteOpen(true)}
-          className="w-full flex items-center justify-between px-4 py-2 rounded-xl bg-bg-secondary border border-border text-text-muted hover:border-accent/50 hover:text-text-secondary transition-all text-sm group"
-        >
-          <div className="flex items-center gap-2.5">
-            <Search className="w-4 h-4 group-hover:text-accent transition-colors" />
-            <span>Search or command...</span>
+      {/* Center: Inline Search with Dropdown Results */}
+      <div className="hidden sm:block max-w-md w-72 md:w-96 relative">
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+          <input
+            type="text"
+            placeholder="Search dashboard, pages, tools..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+            className="w-full pl-10 pr-4 py-2 rounded-xl bg-bg-secondary border border-border text-text-primary placeholder-text-muted focus:border-accent focus:ring-1 focus:ring-accent outline-none text-xs transition-all"
+          />
+        </div>
+
+        {/* Dropdown Results */}
+        {isSearchFocused && searchQuery.trim() !== "" && (
+          <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-border bg-card p-2 shadow-2xl z-50 animate-fadeInUp max-h-80 overflow-y-auto">
+            {filteredSearchItems.length > 0 ? (
+              <div className="space-y-1">
+                {filteredSearchItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.label}
+                      onMouseDown={() => item.action()}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-left text-[11px] text-text-secondary hover:text-text-primary hover:bg-sidebar-hover transition-colors group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon className="w-3.5 h-3.5 text-text-muted group-hover:text-accent transition-colors" />
+                        <span>{item.label}</span>
+                      </div>
+                      <span className="text-[9px] text-text-muted group-hover:text-text-secondary capitalize">
+                        {item.category}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-text-muted text-[11px]">
+                No results found
+              </div>
+            )}
           </div>
-          <kbd className="hidden md:inline-flex items-center h-5 select-none pointer-events-none px-1.5 font-mono text-[10px] font-medium text-text-muted bg-sidebar-hover border border-border rounded-md gap-0.5">
-            <span>⌘</span>K
-          </kbd>
-        </button>
+        )}
       </div>
 
       {/* Right side: quick actions */}
