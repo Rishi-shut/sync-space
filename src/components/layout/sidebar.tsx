@@ -14,6 +14,7 @@ import {
   Zap,
   LogOut,
   Users,
+  Home,
 } from "lucide-react";
 import { useClerk } from "@clerk/nextjs";
 import { useUIStore } from "@/stores/ui-store";
@@ -30,11 +31,12 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { label: "Dashboard",  href: "/dashboard",           icon: LayoutDashboard },
-  { label: "Messages",   href: "/dashboard/messages",  icon: MessageSquare   },
-  { label: "Meetings",   href: "/dashboard/meetings",  icon: Video           },
-  { label: "Friends",    href: "/dashboard/friends",   icon: Users           },
-  { label: "Settings",   href: "/dashboard/settings",  icon: Settings        },
+  { label: "Dashboard",    href: "/dashboard",           icon: LayoutDashboard },
+  { label: "Messages",     href: "/dashboard/messages",  icon: MessageSquare   },
+  { label: "Meetings",     href: "/dashboard/meetings",  icon: Video           },
+  { label: "Friends",      href: "/dashboard/friends",   icon: Users           },
+  { label: "Settings",     href: "/dashboard/settings",  icon: Settings        },
+  { label: "Landing Page", href: "/",                    icon: Home            },
 ];
 
 export default function Sidebar({ user }: SidebarProps) {
