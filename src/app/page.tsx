@@ -54,9 +54,9 @@ function Navbar() {
 
   return (
     <motion.nav
-      initial={{ y: -24, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled ? "landing-nav-scrolled" : "landing-nav-top"
       }`}
