@@ -28,7 +28,13 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { title = "Quick Meeting", type = "VIDEO", password = null, requireApproval = false } = body;
+    const { 
+      title = "Quick Meeting", 
+      type = "VIDEO", 
+      password = null, 
+      requireApproval = false,
+      scheduledAt = null
+    } = body;
 
     const code = generateRoomCode();
 
@@ -36,23 +42,26 @@ export async function POST(req: Request) {
       data: {
         title,
         code,
-        status: MeetingStatus.ACTIVE,
+        status: scheduledAt ? MeetingStatus.SCHEDULED : MeetingStatus.ACTIVE,
         type: type as MeetingType,
         createdById: dbUser.id,
-        startedAt: new Date(),
+        startedAt: scheduledAt ? null : new Date(),
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
         password: password ? password : null,
         requireApproval: !!requireApproval,
       },
     });
 
-    // Also add the creator as an active participant
-    await db.meetingParticipant.create({
-      data: {
-        meetingId: meeting.id,
-        userId: dbUser.id,
-        role: "HOST",
-      },
-    });
+    // Only add host as active participant if the meeting is starting immediately
+    if (!scheduledAt) {
+      await db.meetingParticipant.create({
+        data: {
+          meetingId: meeting.id,
+          userId: dbUser.id,
+          role: "HOST",
+        },
+      });
+    }
 
     return NextResponse.json(meeting);
   } catch (error) {
