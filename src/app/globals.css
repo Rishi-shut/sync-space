@@ -289,29 +289,30 @@ body {
   font-size: 13px;
   letter-spacing: -0.01em;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
   white-space: nowrap;
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 
 .btn-primary::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
   pointer-events: none;
 }
 
 .btn-primary:hover {
   background: var(--accent-hover);
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35), 0 0 0 1px rgba(99,102,241,0.2);
-  transform: translateY(-1px);
+  box-shadow: 0 6px 20px var(--accent-glow), 0 0 0 1px rgba(255,255,255,0.1) inset;
+  transform: translateY(-1.5px) scale(1.02);
 }
 
 .btn-primary:active {
-  transform: translateY(0);
-  box-shadow: none;
+  transform: translateY(-0.5px) scale(0.98);
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 
 .btn-primary:disabled {
@@ -327,7 +328,7 @@ body {
   justify-content: center;
   gap: 8px;
   padding: 10px 22px;
-  background: transparent;
+  background: var(--background-secondary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: 10px;
@@ -335,14 +336,20 @@ body {
   font-size: 13px;
   letter-spacing: -0.01em;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
 }
 
 .btn-secondary:hover {
-  background: var(--sidebar-hover);
-  border-color: rgba(99, 102, 241, 0.25);
+  background: var(--card-hover);
+  border-color: var(--accent);
   color: var(--text-primary);
+  transform: translateY(-1.5px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.btn-secondary:active {
+  transform: translateY(-0.5px) scale(0.98);
 }
 
 .btn-ghost {
@@ -358,12 +365,17 @@ body {
   font-weight: 500;
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-ghost:hover {
   background: var(--sidebar-hover);
   color: var(--text-primary);
+  transform: scale(1.03);
+}
+
+.btn-ghost:active {
+  transform: scale(0.97);
 }
 
 /* ─── Inputs ──────────────────────────────────────────────────── */
