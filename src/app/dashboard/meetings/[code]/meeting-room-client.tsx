@@ -797,16 +797,16 @@ export default function MeetingRoomClient({
       : "grid-cols-2 md:grid-cols-3 max-w-6xl";
 
   return (
-    <div className="w-full h-full flex flex-col bg-[#0c0c0e] text-[#f4f4f5] relative overflow-hidden">
+    <div className="w-full h-full flex flex-col bg-background text-foreground relative overflow-hidden">
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      <div className="h-16 px-6 border-b border-[#1f1f23]/60 flex items-center justify-between bg-[#09090b] relative z-10 flex-shrink-0">
+      <div className="h-16 px-6 border-b border-border flex items-center justify-between bg-card relative z-10 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
             <Zap className="w-3.5 h-3.5" />
           </div>
           <div>
-            <h3 className="text-xs font-bold text-white truncate max-w-[220px]">{meeting.title}</h3>
-            <span className="text-[9px] text-[#52525b] flex items-center gap-1">
+            <h3 className="text-xs font-bold text-text-primary truncate max-w-[220px]">{meeting.title}</h3>
+            <span className="text-[9px] text-text-muted flex items-center gap-1">
               {peerReady ? (
                 <>
                   <Wifi className="w-2.5 h-2.5 text-emerald-400" />
@@ -824,7 +824,7 @@ export default function MeetingRoomClient({
 
         <button
           onClick={handleCopyLink}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#27272a] bg-[#18181b] hover:bg-[#27272a] text-[10px] text-[#a1a1aa] hover:text-white transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-background hover:bg-card-hover text-[10px] text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
         >
           {copied ? (
             <><Check className="w-3.5 h-3.5 text-emerald-400" /><span className="text-emerald-400">Copied!</span></>
@@ -953,8 +953,8 @@ export default function MeetingRoomClient({
       </div>
 
       {/* ── Controls bar ────────────────────────────────────────────────────── */}
-      <div className="h-24 border-t border-[#1f1f23]/40 flex items-center justify-center bg-gradient-to-t from-[#050507] to-[#0c0c0e] relative z-10 flex-shrink-0">
-        <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-[#14141b]/65 border border-[#24242e]/60 backdrop-blur-lg shadow-2xl">
+      <div className="h-24 border-t border-border flex items-center justify-center bg-background relative z-10 flex-shrink-0">
+        <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-card/75 border border-border backdrop-blur-lg shadow-2xl">
           {/* Mic */}
           <ControlBtn
             active={micActive}
@@ -978,7 +978,7 @@ export default function MeetingRoomClient({
             className={`p-3.5 rounded-2xl border transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center shadow-lg ${
               screenSharing
                 ? "border-accent/40 bg-accent/25 text-accent shadow-accent/15"
-                : "border-[#24242e] bg-[#0c0c10]/80 text-[#a1a1aa] hover:bg-[#1b1b24] hover:text-[#fafafa] shadow-black/20"
+                : "border-border bg-background/80 text-text-secondary hover:bg-card-hover hover:text-text-primary shadow-black/20"
             }`}
           >
             <Monitor className="w-5 h-5" />
@@ -1120,7 +1120,7 @@ function ControlBtn({ active, onClick, title, icon }: ControlBtnProps) {
       title={title}
       className={`p-3.5 rounded-2xl border transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center shadow-lg ${
         active
-          ? "border-[#24242e] bg-[#0c0c10]/80 text-[#fafafa] hover:bg-[#1b1b24] hover:text-white shadow-black/20"
+          ? "border-border bg-background/80 text-text-primary hover:bg-card-hover hover:text-text-primary shadow-black/20"
           : "border-rose-500/30 bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 shadow-rose-950/20"
       }`}
     >
