@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, User as UserIcon, Trash2, ArrowLeft, Video, Phone } from "lucide-react";
+import { Send, User as UserIcon, Trash2, ArrowLeft, Video, Phone, Paperclip, X, File } from "lucide-react";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -32,12 +32,21 @@ interface MessageSender {
   imageUrl: string | null;
 }
 
+interface AttachmentInfo {
+  id: string;
+  name: string;
+  url: string;
+  mimeType: string;
+  size: number;
+}
+
 interface Message {
   id: string;
   content: string;
   senderId: string;
   createdAt: string;
   sender: MessageSender;
+  attachments?: AttachmentInfo[];
 }
 
 interface ChatWindowClientProps {
@@ -58,7 +67,45 @@ export default function ChatWindowClient({
   const [isSending, setIsSending] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errMsg = await res.text();
+        throw new Error(errMsg || "Upload failed");
+      }
+
+      const attachment = await res.json();
+      setAttachments((prev) => [...prev, attachment]);
+    } catch (err: any) {
+      alert(err.message || "Failed to upload file");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleStartCall = async () => {
     if (!partner) return;
@@ -209,17 +256,33 @@ export default function ChatWindowClient({
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() || isSending) return;
+    if ((!content.trim() && attachments.length === 0) || isSending || isUploading) return;
 
     setIsSending(true);
     const textToSend = content;
+    const attachmentsToSend = attachments;
     setContent("");
+    setAttachments([]);
+
+    let type = "TEXT";
+    if (attachmentsToSend.length > 0) {
+      const firstAttachment = attachmentsToSend[0];
+      if (firstAttachment.mimeType.startsWith("image/")) {
+        type = "IMAGE";
+      } else {
+        type = "FILE";
+      }
+    }
 
     try {
       const res = await fetch(`/api/conversations/${conversation.id}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: textToSend }),
+        body: JSON.stringify({
+          content: textToSend,
+          type,
+          attachments: attachmentsToSend,
+        }),
       });
 
       if (res.ok) {
@@ -372,15 +435,64 @@ export default function ChatWindowClient({
                     {msg.sender.displayName || "User"}
                   </span>
                 )}
-                <div
-                  className={`p-3 rounded-2xl text-xs leading-relaxed break-words ${
-                    isOwn
-                      ? "bg-accent text-white rounded-tr-none"
-                      : "bg-card border border-border text-foreground rounded-tl-none"
-                  }`}
-                >
-                  {msg.content}
-                </div>
+                {msg.content && (
+                  <div
+                    className={`p-3 rounded-2xl text-xs leading-relaxed break-words ${
+                      isOwn
+                        ? "bg-accent text-white rounded-tr-none"
+                        : "bg-card border border-border text-foreground rounded-tl-none"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                )}
+
+                {msg.attachments && msg.attachments.length > 0 && (
+                  <div className="space-y-2 mt-1">
+                    {msg.attachments.map((att) => {
+                      const isImage = att.mimeType.startsWith("image/");
+                      if (isImage) {
+                        return (
+                          <div
+                            key={att.id}
+                            className="rounded-xl overflow-hidden border border-border max-w-sm relative aspect-video cursor-pointer bg-card group"
+                            onClick={() => window.open(att.url, "_blank")}
+                          >
+                            <Image
+                              src={att.url}
+                              alt={att.name}
+                              fill
+                              className="object-cover group-hover:scale-[1.02] transition-transform duration-200"
+                              unoptimized
+                            />
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <a
+                            key={att.id}
+                            href={att.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all cursor-pointer max-w-sm ${
+                              isOwn
+                                ? "bg-accent/15 border-accent/25 hover:bg-accent/25 text-white"
+                                : "bg-card border-border hover:bg-card-hover text-text-primary"
+                            }`}
+                          >
+                            <div className="p-2 rounded-lg bg-background/80 flex items-center justify-center">
+                              <File className="w-5 h-5 text-accent" />
+                            </div>
+                            <div className="flex-1 min-w-0 text-left">
+                              <p className="text-xs font-semibold truncate">{att.name}</p>
+                              <p className="text-[10px] opacity-70">{(att.size / 1024).toFixed(1)} KB</p>
+                            </div>
+                          </a>
+                        );
+                      }
+                    })}
+                  </div>
+                )}
                 <span className="text-[8px] text-text-secondary block px-1 text-right">
                   {timeLabel}
                 </span>
@@ -392,23 +504,79 @@ export default function ChatWindowClient({
       </div>
 
       {/* Text Message Input Panel */}
-      <form onSubmit={handleSend} className="p-4 bg-card border-t border-border flex gap-2">
-        <input
-          type="text"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Type your message..."
-          className="flex-1 input bg-background border-border text-xs py-2 text-foreground"
-          required
-        />
-        <button
-          type="submit"
-          disabled={isSending || !content.trim()}
-          className="btn-primary px-4 py-2 text-xs font-semibold gap-1.5"
-        >
-          <Send className="w-3.5 h-3.5" />
-          <span>Send</span>
-        </button>
+      <form onSubmit={handleSend} className="p-4 bg-card border-t border-border flex flex-col gap-3">
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 animate-fadeIn">
+            {attachments.map((att, index) => {
+              const isImage = att.mimeType.startsWith("image/");
+              return (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 p-1.5 rounded-xl border border-border bg-background relative group"
+                >
+                  {isImage ? (
+                    <div className="w-8 h-8 rounded-lg overflow-hidden relative border border-border">
+                      <Image src={att.url} alt={att.name} fill className="object-cover" />
+                    </div>
+                  ) : (
+                    <div className="p-1 rounded bg-accent/10">
+                      <File className="w-6 h-6 text-accent" />
+                    </div>
+                  )}
+                  <div className="max-w-[120px] text-left">
+                    <p className="text-[10px] font-semibold truncate text-text-primary">{att.name}</p>
+                    <p className="text-[8px] text-text-secondary">{(att.size / 1024).toFixed(0)} KB</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAttachment(index)}
+                    className="p-1 rounded-full bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex gap-2 items-center">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isSending || isUploading}
+            className="p-2 rounded-lg border border-border bg-card text-accent hover:bg-accent/10 hover:text-accent transition-all cursor-pointer flex items-center justify-center"
+            title="Attach file or picture"
+          >
+            {isUploading ? (
+              <div className="w-4 h-4 border-2 border-t-transparent border-accent rounded-full animate-spin" />
+            ) : (
+              <Paperclip className="w-4 h-4" />
+            )}
+          </button>
+          <input
+            type="text"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder={isUploading ? "Uploading file..." : "Type your message..."}
+            disabled={isUploading}
+            className="flex-1 input bg-background border-border text-xs py-2 text-foreground"
+          />
+          <button
+            type="submit"
+            disabled={isSending || isUploading || (!content.trim() && attachments.length === 0)}
+            className="btn-primary px-4 py-2 text-xs font-semibold gap-1.5"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>Send</span>
+          </button>
+        </div>
       </form>
     </div>
   );
