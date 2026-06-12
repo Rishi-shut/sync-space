@@ -108,25 +108,23 @@ export default function MeetingActionsClient() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Start Instant Meeting */}
-      <div className="p-6 rounded-2xl border border-border bg-card/80 backdrop-blur-sm flex flex-col justify-between min-h-[160px] group hover:border-accent/40 transition-all duration-300">
+      <div className="p-6 rounded-2xl border border-border bg-card/85 backdrop-blur-sm flex flex-col h-full group hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5 transition-all duration-300">
         <div>
           <h3 className="text-sm font-semibold text-text-primary mb-1">Instant Meeting</h3>
-          <p className="text-xs text-text-secondary">
+          <p className="text-xs text-text-secondary mb-3">
             Start an HD video conference with screensharing and direct link invitations.
           </p>
-        </div>
 
-        <div className="mt-3">
           <button
             type="button"
             onClick={() => setShowSettings(!showSettings)}
-            className="text-[10px] font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer"
+            className="text-[10px] font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer mb-2"
           >
             <span>{showSettings ? "Hide Security Options" : "Show Security Options"}</span>
           </button>
 
           {showSettings && (
-            <div className="mt-3 p-3 rounded-xl border border-border bg-background/50 space-y-3">
+            <div className="p-3 rounded-xl border border-border bg-background/50 space-y-3 animate-fadeInUp">
               {/* Host Admission Approval Option */}
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-text-secondary">Require Host Approval</span>
@@ -164,31 +162,32 @@ export default function MeetingActionsClient() {
           )}
         </div>
 
-        {error && <p className="text-xs text-rose-500 mt-2">{error}</p>}
-
-        <button
-          onClick={handleCreateMeeting}
-          disabled={isCreating}
-          className="mt-4 w-full btn-primary py-2.5 justify-center text-xs font-semibold gap-2"
-        >
-          {isCreating ? (
-            <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin" />
-          ) : (
-            <Plus className="w-4 h-4" />
-          )}
-          Start Meeting
-        </button>
+        <div className="mt-auto pt-4 space-y-2">
+          {error && <p className="text-xs text-rose-500">{error}</p>}
+          <button
+            onClick={handleCreateMeeting}
+            disabled={isCreating}
+            className="w-full btn-primary py-2.5 justify-center text-xs font-semibold gap-2 shadow-[0_4px_20px_rgba(124,58,237,0.15)] hover:shadow-[0_4px_25px_rgba(124,58,237,0.25)] transition-all"
+          >
+            {isCreating ? (
+              <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
+            Start Meeting
+          </button>
+        </div>
       </div>
 
       {/* Schedule a Meeting */}
       <form
         onSubmit={handleScheduleMeeting}
-        className="p-6 rounded-2xl border border-border bg-card/80 backdrop-blur-sm flex flex-col justify-between min-h-[160px] group hover:border-accent/40 transition-all duration-300"
+        className="p-6 rounded-2xl border border-border bg-card/85 backdrop-blur-sm flex flex-col h-full group hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5 transition-all duration-300"
       >
         <div className="space-y-3">
           <div>
             <h3 className="text-sm font-semibold text-text-primary mb-1">Schedule Meeting</h3>
-            <p className="text-xs text-text-secondary">
+            <p className="text-xs text-text-secondary mb-2">
               Plan a future video session and save it directly to your agenda.
             </p>
           </div>
@@ -215,13 +214,13 @@ export default function MeetingActionsClient() {
             <button
               type="button"
               onClick={() => setShowScheduleSettings(!showScheduleSettings)}
-              className="text-[10px] font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer"
+              className="text-[10px] font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer mb-2"
             >
               <span>{showScheduleSettings ? "Hide Security Options" : "Show Security Options"}</span>
             </button>
 
             {showScheduleSettings && (
-              <div className="mt-3 p-3 rounded-xl border border-border bg-background/50 space-y-3">
+              <div className="p-3 rounded-xl border border-border bg-background/50 space-y-3 animate-fadeInUp">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-text-secondary">Require Host Approval</span>
                   <input
@@ -258,50 +257,54 @@ export default function MeetingActionsClient() {
           </div>
         </div>
 
-        {scheduleError && <p className="text-xs text-rose-500 mt-2">{scheduleError}</p>}
-        {scheduleSuccess && <p className="text-xs text-emerald-500 mt-2">{scheduleSuccess}</p>}
+        <div className="mt-auto pt-4 space-y-2">
+          {scheduleError && <p className="text-xs text-rose-500">{scheduleError}</p>}
+          {scheduleSuccess && <p className="text-xs text-emerald-500">{scheduleSuccess}</p>}
 
-        <button
-          type="submit"
-          disabled={isScheduling}
-          className="mt-4 w-full btn-primary py-2.5 justify-center text-xs font-semibold gap-2"
-        >
-          {isScheduling ? (
-            <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin" />
-          ) : (
-            <Calendar className="w-4 h-4" />
-          )}
-          Schedule Meeting
-        </button>
+          <button
+            type="submit"
+            disabled={isScheduling}
+            className="w-full btn-primary py-2.5 justify-center text-xs font-semibold gap-2 shadow-[0_4px_20px_rgba(124,58,237,0.15)] hover:shadow-[0_4px_25px_rgba(124,58,237,0.25)] transition-all"
+          >
+            {isScheduling ? (
+              <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin" />
+            ) : (
+              <Calendar className="w-4 h-4" />
+            )}
+            Schedule Meeting
+          </button>
+        </div>
       </form>
 
       {/* Join with Code */}
       <form
         onSubmit={handleJoinMeeting}
-        className="p-6 rounded-2xl border border-border bg-card/80 backdrop-blur-sm flex flex-col justify-between min-h-[160px] group hover:border-accent/40 transition-all duration-300"
+        className="p-6 rounded-2xl border border-border bg-card/85 backdrop-blur-sm flex flex-col h-full group hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5 transition-all duration-300"
       >
         <div>
           <h3 className="text-sm font-semibold text-text-primary mb-1">Join with Code</h3>
-          <p className="text-xs text-text-secondary">
+          <p className="text-xs text-text-secondary mb-3">
             Enter a room invite code (e.g. abc-defg-hij) to jump right in.
           </p>
         </div>
 
-        <div className="mt-4 flex gap-2">
-          <input
-            type="text"
-            placeholder="Room code"
-            value={roomCode}
-            onChange={(e) => setRoomCode(e.target.value)}
-            className="flex-1 input text-xs py-2 bg-background border-border text-text-primary"
-            required
-          />
-          <button
-            type="submit"
-            className="btn-primary px-4 py-2 text-xs font-semibold"
-          >
-            <ArrowRight className="w-4 h-4" />
-          </button>
+        <div className="mt-auto pt-4">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Room code"
+              value={roomCode}
+              onChange={(e) => setRoomCode(e.target.value)}
+              className="flex-1 input text-xs py-2 bg-background border-border text-text-primary"
+              required
+            />
+            <button
+              type="submit"
+              className="btn-primary px-4 py-2 text-xs font-semibold shadow-[0_4px_20px_rgba(124,58,237,0.15)]"
+            >
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </form>
     </div>
