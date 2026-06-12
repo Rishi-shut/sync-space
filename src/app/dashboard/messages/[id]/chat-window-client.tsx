@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, User as UserIcon, Trash2, ArrowLeft } from "lucide-react";
+import { Send, User as UserIcon, Trash2, ArrowLeft, Video } from "lucide-react";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -57,7 +57,44 @@ export default function ChatWindowClient({
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCalling, setIsCalling] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const handleStartCall = async () => {
+    if (!partner) return;
+    setIsCalling(true);
+    try {
+      // 1. Create Instant Meeting
+      const meetingRes = await fetch("/api/meetings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: `Call with ${displayName}` }),
+      });
+
+      if (!meetingRes.ok) throw new Error("Could not initialize meeting room");
+      const meeting = await meetingRes.json();
+
+      // 2. Post Invitation Link to DM
+      const inviteMsg = `I've started a video call! Click the button below to join the room.\n\n[Join Active Call](/dashboard/meetings/${meeting.code})`;
+      const res = await fetch(`/api/conversations/${conversation.id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: inviteMsg, type: "TEXT" }),
+      });
+
+      if (res.ok) {
+        const newMsg = await res.json();
+        setMessages((prev) => [...prev, newMsg]);
+      }
+
+      // 3. Redirect host into the meeting room
+      router.push(`/dashboard/meetings/${meeting.code}`);
+    } catch (err: any) {
+      alert(err.message || "Failed to start call");
+    } finally {
+      setIsCalling(false);
+    }
+  };
 
   const handleDeleteChat = async () => {
     const confirmDelete = window.confirm(
@@ -213,18 +250,35 @@ export default function ChatWindowClient({
           </div>
         </div>
 
-        <button
-          onClick={handleDeleteChat}
-          disabled={isDeleting}
-          className="p-2 rounded-lg border border-border bg-card text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all cursor-pointer flex items-center justify-center"
-          title="Delete Chat"
-        >
-          {isDeleting ? (
-            <div className="w-4 h-4 border-2 border-t-transparent border-rose-500 rounded-full animate-spin" />
-          ) : (
-            <Trash2 className="w-4 h-4" />
+        <div className="flex items-center gap-2">
+          {isDirect && (
+            <button
+              onClick={handleStartCall}
+              disabled={isCalling}
+              className="p-2 rounded-lg border border-border bg-card text-accent hover:bg-accent/10 hover:text-accent transition-all cursor-pointer flex items-center justify-center"
+              title="Start Call"
+            >
+              {isCalling ? (
+                <div className="w-4 h-4 border-2 border-t-transparent border-accent rounded-full animate-spin" />
+              ) : (
+                <Video className="w-4 h-4" />
+              )}
+            </button>
           )}
-        </button>
+
+          <button
+            onClick={handleDeleteChat}
+            disabled={isDeleting}
+            className="p-2 rounded-lg border border-border bg-card text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all cursor-pointer flex items-center justify-center"
+            title="Delete Chat"
+          >
+            {isDeleting ? (
+              <div className="w-4 h-4 border-2 border-t-transparent border-rose-500 rounded-full animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Messages Feed Frame */}
