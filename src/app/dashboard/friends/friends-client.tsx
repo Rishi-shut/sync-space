@@ -15,6 +15,7 @@ import {
   X,
   Plus,
   Loader2,
+  Phone,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -211,6 +212,50 @@ export default function FriendsClient({ userId }: FriendsClientProps) {
     }
   };
 
+  // Quick Action: Instant Voice Call & Invitation
+  const handleInviteToVoiceCall = async (friend: Friend) => {
+    setActionLoading(friend.id);
+    try {
+      // 1. Create DM Conversation first
+      const convoRes = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "DIRECT", partnerId: friend.id }),
+      });
+
+      if (!convoRes.ok) throw new Error("Could not start conversation channel");
+      const convo = await convoRes.json();
+
+      // 2. Create Instant Meeting
+      const meetingRes = await fetch("/api/meetings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          title: `Voice Call with ${friend.displayName || "Friend"}`,
+          type: "VOICE" 
+        }),
+      });
+
+      if (!meetingRes.ok) throw new Error("Could not initialize voice room");
+      const meeting = await meetingRes.json();
+
+      // 3. Post Invitation Link to DM
+      const inviteMsg = `I've started a voice call! Click the button below to join.\n\n[Join Voice Call](/dashboard/meetings/${meeting.code})`;
+      await fetch(`/api/conversations/${convo.id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: inviteMsg, type: "TEXT" }),
+      });
+
+      // 4. Redirect host into the meeting room
+      router.push(`/dashboard/meetings/${meeting.code}`);
+    } catch (err: any) {
+      alert(err.message || "Failed to invite friend to voice call");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const statusColors: Record<string, string> = {
     ONLINE: "bg-emerald-500",
     AWAY: "bg-amber-500",
@@ -336,6 +381,14 @@ export default function FriendsClient({ userId }: FriendsClientProps) {
                             title="Message Friend"
                           >
                             <MessageSquare className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleInviteToVoiceCall(friend)}
+                            disabled={actionLoading !== null}
+                            className="p-2 rounded-xl border border-border bg-background hover:bg-card-hover text-text-secondary hover:text-text-primary transition-all"
+                            title="Voice Call"
+                          >
+                            <Phone className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleInviteToCall(friend)}
