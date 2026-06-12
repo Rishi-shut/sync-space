@@ -150,6 +150,8 @@ export default function MeetingRoomClient({
   const connectionsRef = useRef<Record<string, any>>({});
   // Always-current participants list to avoid stale closures inside PeerJS callbacks
   const participantsRef = useRef<UserInfo[]>(initialParticipants);
+  const callTimeoutsRef = useRef<Record<string, number>>({});
+  const remotePeersRef = useRef<Record<string, RemotePeer>>({});
 
   // ── Remote peer state helpers ──────────────────────────────────────────────
   const upsertRemotePeer = useCallback((userId: string, update: Partial<RemotePeer>) => {
@@ -172,6 +174,11 @@ export default function MeetingRoomClient({
   useEffect(() => {
     participantsRef.current = activeParticipants;
   }, [activeParticipants]);
+
+  // ── Keep remotePeersRef in sync with state ─────────────────────────────────
+  useEffect(() => {
+    remotePeersRef.current = remotePeers;
+  }, [remotePeers]);
 
   // ── Acquire local camera + mic ─────────────────────────────────────────────
   const startLocalMedia = async () => {
@@ -252,32 +259,38 @@ export default function MeetingRoomClient({
     }
   }, [screenStream]);
 
+  // ── Call a participant via PeerJS ──────────────────────────────────────────
+  const callParticipant = useCallback((p: UserInfo) => {
+    const peer = peerRef.current;
+    if (!localStreamRef.current || !peer) return;
+    const targetId = makePeerId(p.id, meeting.code);
+    console.log("[PeerJS] Calling →", targetId);
+
+    // Track call initiation time
+    callTimeoutsRef.current[p.id] = Date.now();
+
+    const call = peer.call(targetId, localStreamRef.current);
+    if (!call) return;
+    connectionsRef.current[p.id] = call;
+
+    upsertRemotePeer(p.id, { userId: p.id, displayName: p.displayName, imageUrl: p.imageUrl });
+
+    call.on("stream", (remoteStream: MediaStream) => {
+      if (!isMountedRef.current) return;
+      upsertRemotePeer(p.id, { stream: remoteStream });
+    });
+    call.on("close", () => removeRemotePeer(p.id));
+    call.on("error", (err: any) => {
+      console.error("[PeerJS] Outgoing call error:", err);
+      removeRemotePeer(p.id);
+    });
+  }, [meeting.code, upsertRemotePeer, removeRemotePeer]);
+
   // ── PeerJS — initialize once when the user actually joins ──────────────────
   useEffect(() => {
     if (!joined || !isApprovedByHost) return;
 
     let peer: any;
-
-    const callParticipant = (p: UserInfo) => {
-      if (!localStreamRef.current || !peer) return;
-      const targetId = makePeerId(p.id, meeting.code);
-      console.log("[PeerJS] Calling →", targetId);
-      const call = peer.call(targetId, localStreamRef.current);
-      if (!call) return;
-      connectionsRef.current[p.id] = call;
-
-      upsertRemotePeer(p.id, { userId: p.id, displayName: p.displayName, imageUrl: p.imageUrl });
-
-      call.on("stream", (remoteStream: MediaStream) => {
-        if (!isMountedRef.current) return;
-        upsertRemotePeer(p.id, { stream: remoteStream });
-      });
-      call.on("close", () => removeRemotePeer(p.id));
-      call.on("error", (err: any) => {
-        console.error("[PeerJS] Outgoing call error:", err);
-        removeRemotePeer(p.id);
-      });
-    };
 
     const initPeer = async () => {
       const { Peer } = await import("peerjs");
@@ -357,7 +370,7 @@ export default function MeetingRoomClient({
       setRemotePeers({});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [joined, isApprovedByHost]);
+  }, [joined, isApprovedByHost, callParticipant]);
 
   // ── Poll meeting state + handle new participants ───────────────────────────
   useEffect(() => {
@@ -407,24 +420,33 @@ export default function MeetingRoomClient({
         
         setActiveParticipants(list);
 
-        // Call anyone who joined after us, isn't already connected, and has a larger ID than us
+        // Call or retry calls for anyone who has a larger ID than us
         if (peerRef.current && peerReady && isApprovedByHost) {
           list
-            .filter((p) => p.id !== user.id && !connectionsRef.current[p.id] && user.id < p.id)
+            .filter((p) => p.id !== user.id && user.id < p.id)
             .forEach((p) => {
-              const targetId = makePeerId(p.id, meeting.code);
-              console.log("[PeerJS] Newly joined participant – calling:", targetId);
-              const call = peerRef.current.call(targetId, localStreamRef.current);
-              if (!call) return;
-              connectionsRef.current[p.id] = call;
-
-              upsertRemotePeer(p.id, { userId: p.id, displayName: p.displayName, imageUrl: p.imageUrl });
-
-              call.on("stream", (remoteStream: MediaStream) => {
-                if (!isMountedRef.current) return;
-                upsertRemotePeer(p.id, { stream: remoteStream });
-              });
-              call.on("close", () => removeRemotePeer(p.id));
+              const conn = connectionsRef.current[p.id];
+              if (!conn) {
+                // Not connected yet, initiate call
+                callParticipant(p);
+              } else {
+                // Connection exists. Check if we have received their media stream.
+                const remotePeer = remotePeersRef.current[p.id];
+                if (!remotePeer || !remotePeer.stream) {
+                  // No stream yet. Check if the call has timed out.
+                  const callTime = callTimeoutsRef.current[p.id] || 0;
+                  if (Date.now() - callTime > 8000) {
+                    console.log(`[PeerJS] Call to ${p.displayName || p.id} timed out (8s) without stream. Retrying...`);
+                    try {
+                      conn.close();
+                    } catch (e) {
+                      console.warn("[PeerJS] Error closing timed-out call:", e);
+                    }
+                    removeRemotePeer(p.id);
+                    callParticipant(p);
+                  }
+                }
+              }
             });
         }
 
@@ -442,7 +464,7 @@ export default function MeetingRoomClient({
     const interval = setInterval(poll, 4000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [joined, peerReady]);
+  }, [joined, peerReady, callParticipant]);
 
   // ── Toggle helpers ─────────────────────────────────────────────────────────
 
@@ -466,10 +488,19 @@ export default function MeetingRoomClient({
       try {
         const pc: RTCPeerConnection = call.peerConnection;
         if (!pc) return;
-        pc.getSenders().forEach((sender) => {
-          if (sender.track?.kind === "video") sender.replaceTrack(videoTrack);
-          if (sender.track?.kind === "audio") sender.replaceTrack(audioTrack);
-        });
+        if (typeof pc.getTransceivers === "function") {
+          pc.getTransceivers().forEach((transceiver) => {
+            const sender = transceiver.sender;
+            const kind = transceiver.receiver.track?.kind || sender.track?.kind;
+            if (kind === "video") sender.replaceTrack(videoTrack);
+            if (kind === "audio") sender.replaceTrack(audioTrack);
+          });
+        } else {
+          pc.getSenders().forEach((sender) => {
+            if (sender.track?.kind === "video") sender.replaceTrack(videoTrack);
+            if (sender.track?.kind === "audio") sender.replaceTrack(audioTrack);
+          });
+        }
       } catch (_) { /* ignore */ }
     });
   }, []);
