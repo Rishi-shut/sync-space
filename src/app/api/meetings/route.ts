@@ -159,6 +159,20 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    // Joining or returning to the meeting
+    if (status === "JOINED") {
+      await db.meetingParticipant.updateMany({
+        where: {
+          meetingId: meeting.id,
+          userId: dbUser.id,
+        },
+        data: {
+          leftAt: null,
+        },
+      });
+      return NextResponse.json({ success: true });
+    }
+
     // Only host can end the meeting
     if (meeting.createdById !== dbUser.id) {
       return new NextResponse("Forbidden: Only host can end meeting", { status: 403 });

@@ -309,9 +309,21 @@ export default function MeetingRoomClient({
 
       peerRef.current = peer;
 
-      peer.on("open", (id: string) => {
+      peer.on("open", async (id: string) => {
         if (!isMountedRef.current) return;
         console.log("[PeerJS] Open. My ID:", id);
+
+        // Reset leftAt status in PostgreSQL DB so other participants see us as active
+        try {
+          await fetch("/api/meetings", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: meeting.code, status: "JOINED" }),
+          });
+        } catch (err) {
+          console.error("[PeerJS] Failed to mark as JOINED in DB:", err);
+        }
+
         setPeerReady(true);
 
         // Call everyone currently in the room who has a larger ID than us (prevents WebRTC call collision)

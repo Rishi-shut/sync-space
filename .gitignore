@@ -54,3 +54,5 @@ coverage/
 .cache/
 
 /src/generated/prisma
+
+/public/uploads
