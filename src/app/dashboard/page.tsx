@@ -4,6 +4,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { Video, Clock, MessageSquare, Files, Bot, Sparkles, Calendar } from "lucide-react";
 import MeetingActionsClient from "./meeting-actions-client";
+import DeleteMeetingButton from "./delete-meeting-button";
 
 export default async function DashboardPage() {
   const { userId } = await auth();
@@ -118,12 +119,15 @@ export default async function DashboardPage() {
                         </p>
                       </div>
                     </div>
-                    <Link
-                      href={`/dashboard/meetings/${meeting.code}`}
-                      className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-bg-secondary text-text-primary hover:bg-sidebar-hover border border-border transition-all"
-                    >
-                      Join
-                    </Link>
+                    <div className="flex items-center gap-1.5">
+                      <Link
+                        href={`/dashboard/meetings/${meeting.code}`}
+                        className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-bg-secondary text-text-primary hover:bg-sidebar-hover border border-border transition-all animate-none"
+                      >
+                        Join
+                      </Link>
+                      <DeleteMeetingButton meetingCode={meeting.code} meetingTitle={meeting.title} />
+                    </div>
                   </div>
                 ))}
               </div>
