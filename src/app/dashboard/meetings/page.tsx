@@ -37,11 +37,6 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8 select-none animate-fadeInUp">
-      {ended === "true" && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl text-xs font-semibold text-center">
-          The meeting has been ended by the host.
-        </div>
-      )}
 
       <div className="space-y-1">
         <h2 className="text-xl font-bold text-text-primary tracking-tight">Meetings</h2>
