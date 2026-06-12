@@ -16,6 +16,7 @@ import {
   Settings as SettingsIcon,
 } from "lucide-react";
 import { useUIStore } from "@/stores/ui-store";
+import Image from "next/image";
 
 interface NavbarProps {
   user: {
@@ -40,6 +41,47 @@ export default function Navbar({ user }: NavbarProps) {
   // Inline search states
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // Notification states
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch("/api/friends");
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.incoming || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleNotifAction = async (friendshipId: string, action: "ACCEPT" | "DECLINE") => {
+    try {
+      const res = await fetch("/api/friends", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ friendshipId, action }),
+      });
+      if (res.ok) {
+        fetchNotifications();
+        router.refresh();
+      } else {
+        const err = await res.text();
+        alert(err || "Failed to handle notification request");
+      }
+    } catch (err) {
+      console.error("Error handling notification request:", err);
+    }
+  };
 
   const searchItems = [
     { label: "Go to Dashboard", category: "Navigation", icon: LayoutDashboard, action: () => router.push("/dashboard") },
@@ -184,11 +226,87 @@ export default function Navbar({ user }: NavbarProps) {
           )}
         </div>
 
-        {/* Notifications */}
-        <button className="p-2.5 rounded-xl border border-border bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-sidebar-hover transition-colors relative">
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent animate-pulse" />
-        </button>
+        {/* Notifications Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setNotificationsOpen(!notificationsOpen)}
+            className="p-2.5 rounded-xl border border-border bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-sidebar-hover transition-colors relative cursor-pointer flex items-center justify-center"
+            title="Notifications"
+          >
+            <Bell className="w-4 h-4" />
+            {notifications.length > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-white shadow-sm animate-pulse">
+                {notifications.length}
+              </span>
+            )}
+          </button>
+
+          {notificationsOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)} />
+              <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-border bg-card p-4 shadow-2xl z-50 animate-fadeInUp max-h-96 overflow-y-auto">
+                <div className="flex items-center justify-between border-b border-border pb-2.5 mb-3">
+                  <h3 className="text-xs font-bold text-text-primary">Notifications</h3>
+                  <span className="text-[9px] bg-accent/10 text-accent font-semibold px-2 py-0.5 rounded-full">
+                    {notifications.length} Pending
+                  </span>
+                </div>
+
+                {notifications.length > 0 ? (
+                  <div className="space-y-3">
+                    {notifications.map((item: any) => (
+                      <div key={item.friendshipId} className="flex flex-col gap-2 p-2.5 rounded-xl bg-bg-secondary border border-border/60">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg overflow-hidden border border-border relative flex-shrink-0">
+                            {item.requester?.imageUrl ? (
+                              <Image
+                                src={item.requester.imageUrl}
+                                alt={item.requester.displayName || "User"}
+                                fill
+                                className="object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-sidebar-hover flex items-center justify-center text-[10px] font-bold text-accent">
+                                {item.requester?.displayName?.[0] || "U"}
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-bold text-text-primary truncate">
+                              {item.requester?.displayName || item.requester?.email || "New User"}
+                            </p>
+                            <p className="text-[8px] text-text-secondary truncate">
+                              Sent you a friend request
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <button
+                            onClick={() => handleNotifAction(item.friendshipId, "ACCEPT")}
+                            className="flex-1 btn-primary py-1 px-2 text-[9px] font-bold justify-center rounded-lg cursor-pointer"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={() => handleNotifAction(item.friendshipId, "DECLINE")}
+                            className="flex-1 btn-secondary py-1 px-2 text-[9px] font-bold justify-center rounded-lg cursor-pointer text-text-secondary hover:text-rose-500 hover:border-rose-500/30"
+                          >
+                            Ignore
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-6 text-center text-text-muted">
+                    <Bell className="w-6 h-6 mb-1.5 opacity-40" />
+                    <p className="text-[10px]">No new notifications</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Theme Toggle */}
         <button
