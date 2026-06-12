@@ -155,6 +155,28 @@
   margin-right: auto !important;
 }
 
+/* Enforce hand cursor on all interactive elements */
+a,
+button,
+select,
+summary,
+[role="button"],
+.sidebar-item,
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.landing-nav-link,
+.landing-icon-btn,
+.landing-cta-btn,
+.mock-nav-item,
+.mock-dm-item,
+.mock-join-btn,
+.cursor-pointer,
+[onClick],
+[onclick] {
+  cursor: pointer !important;
+}
+
 html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
