@@ -79,6 +79,7 @@ model ConversationMember {
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, userId])
+  @@index([userId])
   @@map("conversation_members")
 }
 
@@ -175,6 +176,7 @@ model Meeting {
   createdBy    User                 @relation("MeetingCreator", fields: [createdById], references: [id])
   participants MeetingParticipant[]
 
+  @@index([createdById, status])
   @@map("meetings")
 }
 
@@ -229,6 +231,7 @@ model Friendship {
   receiver User @relation("ReceivedFriendships", fields: [receiverId], references: [id], onDelete: Cascade)
 
   @@unique([senderId, receiverId])
+  @@index([receiverId])
   @@map("friendships")
 }
 
