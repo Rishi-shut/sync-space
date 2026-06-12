@@ -953,8 +953,8 @@ export default function MeetingRoomClient({
       </div>
 
       {/* ── Controls bar ────────────────────────────────────────────────────── */}
-      <div className="h-20 border-t border-[#1f1f23]/60 flex items-center justify-center bg-[#09090b] relative z-10 flex-shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="h-24 border-t border-[#1f1f23]/40 flex items-center justify-center bg-gradient-to-t from-[#050507] to-[#0c0c0e] relative z-10 flex-shrink-0">
+        <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-[#14141b]/65 border border-[#24242e]/60 backdrop-blur-lg shadow-2xl">
           {/* Mic */}
           <ControlBtn
             active={micActive}
@@ -975,10 +975,10 @@ export default function MeetingRoomClient({
           <button
             onClick={toggleScreenShare}
             title={screenSharing ? "Stop Sharing" : "Share Screen"}
-            className={`p-3 rounded-full border transition-all cursor-pointer ${
+            className={`p-3.5 rounded-2xl border transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center shadow-lg ${
               screenSharing
-                ? "border-accent/40 bg-accent/20 text-accent"
-                : "border-[#27272a] bg-[#18181b] text-[#a1a1aa] hover:text-white hover:bg-[#27272a]"
+                ? "border-accent/40 bg-accent/25 text-accent shadow-accent/15"
+                : "border-[#24242e] bg-[#0c0c10]/80 text-[#a1a1aa] hover:bg-[#1b1b24] hover:text-[#fafafa] shadow-black/20"
             }`}
           >
             <Monitor className="w-5 h-5" />
@@ -988,7 +988,7 @@ export default function MeetingRoomClient({
           <button
             onClick={handleLeave}
             title="Leave Meeting"
-            className="p-3 rounded-full border border-[#27272a] bg-[#18181b] text-[#a1a1aa] hover:text-white hover:bg-[#27272a] transition-all cursor-pointer"
+            className="p-3.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:scale-105 active:scale-95 transition-all shadow-md shadow-amber-950/10 cursor-pointer flex items-center justify-center"
           >
             <PhoneOff className="w-5 h-5" />
           </button>
@@ -998,10 +998,10 @@ export default function MeetingRoomClient({
             <button
               onClick={handleEndMeeting}
               title="End Meeting for Everyone"
-              className="flex items-center gap-2 px-4 py-3 rounded-full bg-rose-600 text-white hover:bg-rose-700 transition-all border border-rose-500/20 cursor-pointer"
+              className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-semibold text-xs border border-rose-500/30 shadow-lg shadow-rose-950/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
               <PhoneOff className="w-4 h-4" />
-              <span className="text-xs font-semibold">End Meeting</span>
+              <span className="text-xs font-bold">End Meeting</span>
             </button>
           )}
         </div>
@@ -1118,10 +1118,10 @@ function ControlBtn({ active, onClick, title, icon }: ControlBtnProps) {
     <button
       onClick={onClick}
       title={title}
-      className={`p-3 rounded-full border transition-all cursor-pointer ${
+      className={`p-3.5 rounded-2xl border transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center shadow-lg ${
         active
-          ? "border-[#27272a] bg-[#18181b] text-white hover:bg-[#27272a]"
-          : "border-rose-500/30 bg-rose-500/15 text-rose-500 hover:bg-rose-500/25"
+          ? "border-[#24242e] bg-[#0c0c10]/80 text-[#fafafa] hover:bg-[#1b1b24] hover:text-white shadow-black/20"
+          : "border-rose-500/30 bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 shadow-rose-950/20"
       }`}
     >
       {icon}
