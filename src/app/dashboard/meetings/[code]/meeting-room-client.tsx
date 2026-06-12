@@ -301,9 +301,9 @@ export default function MeetingRoomClient({
         console.log("[PeerJS] Open. My ID:", id);
         setPeerReady(true);
 
-        // Call everyone currently in the room (using latest ref, not stale closure)
+        // Call everyone currently in the room who has a larger ID than us (prevents WebRTC call collision)
         participantsRef.current
-          .filter((p) => p.id !== user.id)
+          .filter((p) => p.id !== user.id && user.id < p.id)
           .forEach(callParticipant);
       });
 
@@ -407,10 +407,10 @@ export default function MeetingRoomClient({
         
         setActiveParticipants(list);
 
-        // Call anyone who joined after us and isn't already connected
+        // Call anyone who joined after us, isn't already connected, and has a larger ID than us
         if (peerRef.current && peerReady && isApprovedByHost) {
           list
-            .filter((p) => p.id !== user.id && !connectionsRef.current[p.id])
+            .filter((p) => p.id !== user.id && !connectionsRef.current[p.id] && user.id < p.id)
             .forEach((p) => {
               const targetId = makePeerId(p.id, meeting.code);
               console.log("[PeerJS] Newly joined participant – calling:", targetId);
@@ -467,8 +467,8 @@ export default function MeetingRoomClient({
         const pc: RTCPeerConnection = call.peerConnection;
         if (!pc) return;
         pc.getSenders().forEach((sender) => {
-          if (sender.track?.kind === "video" && videoTrack) sender.replaceTrack(videoTrack);
-          if (sender.track?.kind === "audio" && audioTrack) sender.replaceTrack(audioTrack);
+          if (sender.track?.kind === "video") sender.replaceTrack(videoTrack);
+          if (sender.track?.kind === "audio") sender.replaceTrack(audioTrack);
         });
       } catch (_) { /* ignore */ }
     });
@@ -708,22 +708,36 @@ export default function MeetingRoomClient({
   // LOBBY SCREEN
   // ─────────────────────────────────────────────────────────────────────────────
   if (!joined) {
+    const isVoice = meeting.type === "VOICE";
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-[#0c0c0e] p-6 text-[#f4f4f5]">
         <div className="w-full max-w-2xl bg-[#09090b] border border-[#27272a] rounded-2xl p-8 shadow-2xl space-y-6">
           <div className="text-center space-y-1">
             <span className="text-[10px] font-bold text-accent tracking-wider uppercase">
-              Meeting Lobby
+              {isVoice ? "Voice Call Lobby" : "Meeting Lobby"}
             </span>
             <h2 className="text-xl font-bold text-white tracking-tight">{meeting.title}</h2>
             <p className="text-xs text-[#a1a1aa]">
-              Review your camera and audio settings before joining.
+              {isVoice ? "Review your audio settings before joining." : "Review your camera and audio settings before joining."}
             </p>
           </div>
 
           {/* Local Video Preview */}
           <div className="relative aspect-video rounded-xl overflow-hidden bg-[#0c0c0e] border border-[#27272a] flex items-center justify-center">
-            {camActive ? (
+            {isVoice ? (
+              <div className="text-center space-y-4">
+                <div className="w-20 h-20 rounded-full bg-accent/10 border-2 border-accent flex items-center justify-center text-accent text-xl font-bold select-none relative animate-pulse shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                  {user.imageUrl ? (
+                    <Image src={user.imageUrl} alt={user.displayName || "You"} width={80} height={80} className="rounded-full object-cover" />
+                  ) : (
+                    <span>{user.displayName?.[0]?.toUpperCase() || "Y"}</span>
+                  )}
+                </div>
+                <span className="text-xs font-semibold text-text-primary block">
+                  {micActive ? "Microphone is active" : "Microphone is muted"}
+                </span>
+              </div>
+            ) : camActive ? (
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -749,15 +763,17 @@ export default function MeetingRoomClient({
               >
                 {micActive ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
               </button>
-              <button
-                onClick={toggleCam}
-                title={camActive ? "Turn off camera" : "Turn on camera"}
-                className={`p-2 rounded-full transition-all cursor-pointer ${
-                  camActive ? "text-white hover:bg-white/10" : "bg-rose-500/20 text-rose-500"
-                }`}
-              >
-                {camActive ? <VideoIcon className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-              </button>
+              {!isVoice && (
+                <button
+                  onClick={toggleCam}
+                  title={camActive ? "Turn off camera" : "Turn on camera"}
+                  className={`p-2 rounded-full transition-all cursor-pointer ${
+                    camActive ? "text-white hover:bg-white/10" : "bg-rose-500/20 text-rose-500"
+                  }`}
+                >
+                  {camActive ? <VideoIcon className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                </button>
+              )}
             </div>
           </div>
 
@@ -772,7 +788,7 @@ export default function MeetingRoomClient({
               onClick={() => setJoined(true)}
               className="flex-1 btn-primary py-3 text-xs font-semibold justify-center cursor-pointer"
             >
-              Join Meeting
+              {isVoice ? "Join Voice Call" : "Join Meeting"}
             </button>
           </div>
         </div>
