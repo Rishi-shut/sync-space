@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Video, Plus, ArrowRight } from "lucide-react";
+import { Video, Plus, ArrowRight, Calendar } from "lucide-react";
 
 export default function MeetingActionsClient() {
   const router = useRouter();
+  
+  // Instant Meeting States
   const [showSettings, setShowSettings] = useState(false);
   const [requirePassword, setRequirePassword] = useState(false);
   const [password, setPassword] = useState("");
@@ -13,6 +15,17 @@ export default function MeetingActionsClient() {
   const [roomCode, setRoomCode] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
+
+  // Schedule Meeting States
+  const [showScheduleSettings, setShowScheduleSettings] = useState(false);
+  const [scheduleTitle, setScheduleTitle] = useState("Team Meeting");
+  const [scheduledTime, setScheduledTime] = useState("");
+  const [scheduleRequirePassword, setScheduleRequirePassword] = useState(false);
+  const [schedulePassword, setSchedulePassword] = useState("");
+  const [scheduleRequireApproval, setScheduleRequireApproval] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [scheduleSuccess, setScheduleSuccess] = useState("");
+  const [scheduleError, setScheduleError] = useState("");
 
   const handleCreateMeeting = async () => {
     setIsCreating(true);
@@ -47,8 +60,43 @@ export default function MeetingActionsClient() {
     router.push(`/dashboard/meetings/${code}`);
   };
 
+  const handleScheduleMeeting = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!scheduledTime) {
+      setScheduleError("Please select a date and time");
+      return;
+    }
+    setIsScheduling(true);
+    setScheduleError("");
+    setScheduleSuccess("");
+    try {
+      const res = await fetch("/api/meetings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: scheduleTitle || "Scheduled Meeting",
+          password: scheduleRequirePassword ? schedulePassword : null,
+          requireApproval: scheduleRequireApproval,
+          scheduledAt: new Date(scheduledTime).toISOString(),
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to schedule meeting");
+
+      const meeting = await res.json();
+      setScheduleSuccess(`Meeting scheduled! Code: ${meeting.code}`);
+      setScheduleTitle("Team Meeting");
+      setScheduledTime("");
+      router.refresh();
+    } catch (err: any) {
+      setScheduleError(err.message || "Failed to schedule meeting");
+    } finally {
+      setIsScheduling(false);
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Start Instant Meeting */}
       <div className="p-6 rounded-2xl border border-border bg-card/80 backdrop-blur-sm flex flex-col justify-between min-h-[160px] group hover:border-accent/40 transition-all duration-300">
         <div>
@@ -121,6 +169,101 @@ export default function MeetingActionsClient() {
           Start Meeting
         </button>
       </div>
+
+      {/* Schedule a Meeting */}
+      <form
+        onSubmit={handleScheduleMeeting}
+        className="p-6 rounded-2xl border border-border bg-card/80 backdrop-blur-sm flex flex-col justify-between min-h-[160px] group hover:border-accent/40 transition-all duration-300"
+      >
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-text-primary mb-1">Schedule Meeting</h3>
+            <p className="text-xs text-text-secondary">
+              Plan a future video session and save it directly to your agenda.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <input
+              type="text"
+              placeholder="Meeting Title"
+              value={scheduleTitle}
+              onChange={(e) => setScheduleTitle(e.target.value)}
+              className="w-full input text-xs py-1.5 bg-background border-border text-text-primary"
+              required
+            />
+            <input
+              type="datetime-local"
+              value={scheduledTime}
+              onChange={(e) => setScheduledTime(e.target.value)}
+              className="w-full input text-xs py-1.5 bg-background border-border text-text-primary"
+              required
+            />
+          </div>
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowScheduleSettings(!showScheduleSettings)}
+              className="text-[10px] font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <span>{showScheduleSettings ? "Hide Security Options" : "Show Security Options"}</span>
+            </button>
+
+            {showScheduleSettings && (
+              <div className="mt-3 p-3 rounded-xl border border-border bg-background/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-text-secondary">Require Host Approval</span>
+                  <input
+                    type="checkbox"
+                    checked={scheduleRequireApproval}
+                    onChange={(e) => setScheduleRequireApproval(e.target.checked)}
+                    className="rounded border-border bg-card text-accent focus:ring-accent w-3.5 h-3.5 cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-text-secondary">Password Protected</span>
+                    <input
+                      type="checkbox"
+                      checked={scheduleRequirePassword}
+                      onChange={(e) => setScheduleRequirePassword(e.target.checked)}
+                      className="rounded border-border bg-card text-accent focus:ring-accent w-3.5 h-3.5 cursor-pointer"
+                    />
+                  </div>
+                  {scheduleRequirePassword && (
+                    <input
+                      type="text"
+                      placeholder="Enter meeting password"
+                      value={schedulePassword}
+                      onChange={(e) => setSchedulePassword(e.target.value)}
+                      className="w-full input text-[10px] py-1 bg-background border-border text-text-primary"
+                      required={scheduleRequirePassword}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {scheduleError && <p className="text-xs text-rose-500 mt-2">{scheduleError}</p>}
+        {scheduleSuccess && <p className="text-xs text-emerald-500 mt-2">{scheduleSuccess}</p>}
+
+        <button
+          type="submit"
+          disabled={isScheduling}
+          className="mt-4 w-full btn-primary py-2.5 justify-center text-xs font-semibold gap-2"
+        >
+          {isScheduling ? (
+            <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin" />
+          ) : (
+            <Calendar className="w-4 h-4" />
+          )}
+          Schedule Meeting
+        </button>
+      </form>
 
       {/* Join with Code */}
       <form
