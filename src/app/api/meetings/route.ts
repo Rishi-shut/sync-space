@@ -164,25 +164,20 @@ export async function PATCH(req: Request) {
       return new NextResponse("Forbidden: Only host can end meeting", { status: 403 });
     }
 
+    if (status === MeetingStatus.ENDED) {
+      await db.meeting.delete({
+        where: { code },
+      });
+      return NextResponse.json({ success: true, deleted: true });
+    }
+
     const updatedMeeting = await db.meeting.update({
       where: { code },
       data: {
         status: status as MeetingStatus,
-        endedAt: status === MeetingStatus.ENDED ? new Date() : null,
+        endedAt: null,
       },
     });
-
-    if (status === MeetingStatus.ENDED) {
-      await db.meetingParticipant.updateMany({
-        where: {
-          meetingId: meeting.id,
-          leftAt: null,
-        },
-        data: {
-          leftAt: new Date(),
-        },
-      });
-    }
 
     return NextResponse.json(updatedMeeting);
   } catch (error) {
