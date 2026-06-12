@@ -122,7 +122,7 @@ export default function MeetingRoomClient({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const [micActive, setMicActive] = useState(true);
-  const [camActive, setCamActive] = useState(false);
+  const [camActive, setCamActive] = useState(meeting.type !== "VOICE");
   const [screenSharing, setScreenSharing] = useState(false);
   const [joined, setJoined] = useState(false);
   const [copied, setCopied] = useState(false);
