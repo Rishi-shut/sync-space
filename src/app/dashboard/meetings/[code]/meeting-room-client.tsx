@@ -136,6 +136,8 @@ export default function MeetingRoomClient({
   const [isApprovedByHost, setIsApprovedByHost] = useState(!meeting.requireApproval || isHost);
   const [wasDenied, setWasDenied] = useState(false);
   const [pendingParticipants, setPendingParticipants] = useState<any[]>([]);
+  const [showEndModal, setShowEndModal] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -363,6 +365,12 @@ export default function MeetingRoomClient({
     const poll = async () => {
       try {
         const res = await fetch(`/api/meetings?code=${meeting.code}${password ? `&password=${encodeURIComponent(password)}` : ""}`);
+        if (res.status === 404) {
+          localStreamRef.current?.getTracks().forEach((t) => t.stop());
+          screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+          router.push("/dashboard/meetings?ended=true");
+          return;
+        }
         if (!res.ok) return;
         const data = await res.json();
 
@@ -538,7 +546,7 @@ export default function MeetingRoomClient({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleLeave = async () => {
+  const confirmLeaveMeeting = async () => {
     try {
       await fetch("/api/meetings", {
         method: "PATCH",
@@ -553,17 +561,30 @@ export default function MeetingRoomClient({
     router.push("/dashboard/meetings");
   };
 
-  const handleEndMeeting = async () => {
+  const confirmEndMeeting = async () => {
     try {
       const res = await fetch("/api/meetings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: meeting.code, status: "ENDED" }),
       });
-      if (res.ok) handleLeave();
+      if (res.ok) {
+        peerRef.current?.destroy();
+        localStreamRef.current?.getTracks().forEach((t) => t.stop());
+        screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+        router.push("/dashboard/meetings");
+      }
     } catch (err) {
       console.error("[Meeting] Failed to end meeting:", err);
     }
+  };
+
+  const handleLeave = () => {
+    setShowLeaveModal(true);
+  };
+
+  const handleEndMeeting = () => {
+    setShowEndModal(true);
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -985,6 +1006,68 @@ export default function MeetingRoomClient({
           )}
         </div>
       </div>
+
+      {/* Premium End Meeting Confirmation Modal */}
+      {showEndModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowEndModal(false)} />
+          <div className="bg-[#14141b] border border-[#24242e] rounded-2xl p-6 max-w-sm w-full relative z-10 space-y-4 animate-scaleIn shadow-2xl">
+            <h3 className="text-sm font-bold text-white">End Meeting?</h3>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              Are you sure you want to end this meeting? This will disconnect all participants and delete the meeting room.
+            </p>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setShowEndModal(false);
+                  confirmEndMeeting();
+                }}
+                className="flex-1 btn-primary bg-rose-600 hover:bg-rose-700 py-2 text-xs font-semibold rounded-xl text-white cursor-pointer"
+              >
+                Yes, End Meeting
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowEndModal(false)}
+                className="flex-1 btn-secondary bg-[#0f0f13] hover:bg-[#1b1b24] py-2 text-xs font-semibold rounded-xl border border-[#24242e] text-[#fafafa] cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Premium Leave Meeting Confirmation Modal */}
+      {showLeaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowLeaveModal(false)} />
+          <div className="bg-[#14141b] border border-[#24242e] rounded-2xl p-6 max-w-sm w-full relative z-10 space-y-4 animate-scaleIn shadow-2xl">
+            <h3 className="text-sm font-bold text-white">Leave Meeting?</h3>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              Are you sure you want to leave the meeting? Other participants will remain connected.
+            </p>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setShowLeaveModal(false);
+                  confirmLeaveMeeting();
+                }}
+                className="flex-1 btn-primary bg-rose-600 hover:bg-rose-700 py-2 text-xs font-semibold rounded-xl text-white cursor-pointer"
+              >
+                Yes, Leave
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLeaveModal(false)}
+                className="flex-1 btn-secondary bg-[#0f0f13] hover:bg-[#1b1b24] py-2 text-xs font-semibold rounded-xl border border-[#24242e] text-[#fafafa] cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
