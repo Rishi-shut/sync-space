@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   Mic,
   MicOff,
@@ -902,7 +903,72 @@ export default function MeetingRoomClient({
       )}
 
       <div className="flex-1 p-5 flex items-center justify-center overflow-hidden">
-        {screenSharing ? (
+        {meeting.type === "VOICE" ? (
+          <div className="flex flex-col items-center justify-center space-y-8 max-w-md w-full p-8 rounded-3xl border border-border bg-card/60 backdrop-blur-xl shadow-2xl animate-fadeIn">
+            {/* Voice call header */}
+            <div className="text-center space-y-1">
+              <span className="text-[10px] uppercase tracking-widest font-black text-accent animate-pulse">
+                Voice Call Active
+              </span>
+              <h2 className="text-xl font-bold text-text-primary">{meeting.title}</h2>
+              <p className="text-xs text-text-secondary">
+                {activeParticipants.length} Connected
+              </p>
+            </div>
+
+            {/* Avatars Grid */}
+            <div className="flex flex-wrap items-center justify-center gap-6 py-6">
+              {/* Local User */}
+              <div className="flex flex-col items-center space-y-2">
+                <div className="relative">
+                  <div className={`w-20 h-20 rounded-full bg-accent/10 border-2 flex items-center justify-center text-xl font-bold transition-all duration-300 relative z-10 ${
+                    micActive ? "border-accent shadow-[0_0_20px_rgba(16,185,129,0.3)] animate-pulse" : "border-border text-text-muted"
+                  }`}>
+                    {user.imageUrl ? (
+                      <Image src={user.imageUrl} alt={user.displayName || "You"} width={80} height={80} className="rounded-full object-cover" />
+                    ) : (
+                      <span>{user.displayName?.[0]?.toUpperCase() || "Y"}</span>
+                    )}
+                  </div>
+                  {!micActive && (
+                    <div className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-rose-500 text-white z-20 border-2 border-background">
+                      <MicOff className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs font-semibold text-text-primary">You</span>
+              </div>
+
+              {/* Remote Users */}
+              {remotePeerList.map((peer) => {
+                const isMuted = !peer.stream;
+                return (
+                  <div key={peer.userId} className="flex flex-col items-center space-y-2 animate-fadeIn">
+                    <div className="relative">
+                      <div className={`w-20 h-20 rounded-full bg-accent/10 border-2 flex items-center justify-center text-xl font-bold transition-all duration-300 relative z-10 ${
+                        !isMuted ? "border-accent shadow-[0_0_20px_rgba(16,185,129,0.3)] animate-pulse" : "border-border text-text-muted"
+                      }`}>
+                        {peer.imageUrl ? (
+                          <Image src={peer.imageUrl} alt={peer.displayName || "Peer"} width={80} height={80} className="rounded-full object-cover" unoptimized />
+                        ) : (
+                          <span>{peer.displayName?.[0]?.toUpperCase() || "P"}</span>
+                        )}
+                      </div>
+                      {isMuted && (
+                        <div className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-rose-500 text-white z-20 border-2 border-background">
+                          <MicOff className="w-3.5 h-3.5" />
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs font-semibold text-text-primary truncate max-w-[100px]">
+                      {peer.displayName || "Connecting…"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : screenSharing ? (
           /* Screen share layout - stacked on mobile, side-by-side on desktop */
           <div className="w-full h-full flex flex-col md:grid md:grid-cols-4 gap-4 overflow-y-auto md:overflow-hidden">
             <div className="w-full h-auto md:h-full md:col-span-3 aspect-video md:aspect-auto rounded-2xl overflow-hidden border border-[#27272a] bg-black relative flex-shrink-0">
@@ -963,26 +1029,30 @@ export default function MeetingRoomClient({
             icon={micActive ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
           />
 
-          {/* Cam */}
-          <ControlBtn
-            active={camActive}
-            onClick={toggleCam}
-            title={camActive ? "Turn Off Camera" : "Turn On Camera"}
-            icon={camActive ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-          />
+          {meeting.type !== "VOICE" && (
+            <>
+              {/* Cam */}
+              <ControlBtn
+                active={camActive}
+                onClick={toggleCam}
+                title={camActive ? "Turn Off Camera" : "Turn On Camera"}
+                icon={camActive ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+              />
 
-          {/* Screen share */}
-          <button
-            onClick={toggleScreenShare}
-            title={screenSharing ? "Stop Sharing" : "Share Screen"}
-            className={`p-3.5 rounded-2xl border transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center shadow-lg ${
-              screenSharing
-                ? "border-accent/40 bg-accent/25 text-accent shadow-accent/15"
-                : "border-border bg-background/80 text-text-secondary hover:bg-card-hover hover:text-text-primary shadow-black/20"
-            }`}
-          >
-            <Monitor className="w-5 h-5" />
-          </button>
+              {/* Screen share */}
+              <button
+                onClick={toggleScreenShare}
+                title={screenSharing ? "Stop Sharing" : "Share Screen"}
+                className={`p-3.5 rounded-2xl border transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center shadow-lg ${
+                  screenSharing
+                    ? "border-accent/40 bg-accent/25 text-accent shadow-accent/15"
+                    : "border-border bg-background/80 text-text-secondary hover:bg-card-hover hover:text-text-primary shadow-black/20"
+                }`}
+              >
+                <Monitor className="w-5 h-5" />
+              </button>
+            </>
+          )}
 
           {/* Leave */}
           <button
@@ -997,11 +1067,11 @@ export default function MeetingRoomClient({
           {meeting.createdById === user.id && (
             <button
               onClick={handleEndMeeting}
-              title="End Meeting for Everyone"
+              title={meeting.type === "VOICE" ? "End Voice Call for Everyone" : "End Meeting for Everyone"}
               className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-semibold text-xs border border-rose-500/30 shadow-lg shadow-rose-950/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
               <PhoneOff className="w-4 h-4" />
-              <span className="text-xs font-bold">End Meeting</span>
+              <span className="text-xs font-bold">{meeting.type === "VOICE" ? "End Call" : "End Meeting"}</span>
             </button>
           )}
         </div>

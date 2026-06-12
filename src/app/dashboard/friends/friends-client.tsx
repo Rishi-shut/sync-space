@@ -239,15 +239,7 @@ export default function FriendsClient({ userId }: FriendsClientProps) {
       if (!meetingRes.ok) throw new Error("Could not initialize voice room");
       const meeting = await meetingRes.json();
 
-      // 3. Post Invitation Link to DM
-      const inviteMsg = `I've started a voice call! Click the button below to join.\n\n[Join Voice Call](/dashboard/meetings/${meeting.code})`;
-      await fetch(`/api/conversations/${convo.id}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: inviteMsg, type: "TEXT" }),
-      });
-
-      // 4. Redirect host into the meeting room
+      // 3. Redirect host into the meeting room
       router.push(`/dashboard/meetings/${meeting.code}`);
     } catch (err: any) {
       alert(err.message || "Failed to invite friend to voice call");

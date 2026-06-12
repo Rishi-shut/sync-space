@@ -160,20 +160,7 @@ export default function ChatWindowClient({
       if (!meetingRes.ok) throw new Error("Could not initialize voice room");
       const meeting = await meetingRes.json();
 
-      // 2. Post Invitation Link to DM
-      const inviteMsg = `I've started a voice call! Click the button below to join.\n\n[Join Voice Call](/dashboard/meetings/${meeting.code})`;
-      const res = await fetch(`/api/conversations/${conversation.id}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: inviteMsg, type: "TEXT" }),
-      });
-
-      if (res.ok) {
-        const newMsg = await res.json();
-        setMessages((prev) => [...prev, newMsg]);
-      }
-
-      // 3. Redirect host into the meeting room
+      // 2. Redirect host into the meeting room
       router.push(`/dashboard/meetings/${meeting.code}`);
     } catch (err: any) {
       alert(err.message || "Failed to start voice call");

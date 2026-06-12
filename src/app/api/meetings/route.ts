@@ -206,7 +206,39 @@ export async function GET(req: Request) {
     const passwordParam = searchParams.get("password");
 
     if (!code) {
-      return new NextResponse("Meeting code is required", { status: 400 });
+      const friendships = await db.friendship.findMany({
+        where: {
+          status: "ACCEPTED",
+          OR: [
+            { senderId: dbUser.id },
+            { receiverId: dbUser.id },
+          ],
+        },
+      });
+
+      const friendIds = friendships.map((f) =>
+        f.senderId === dbUser.id ? f.receiverId : f.senderId
+      );
+
+      const activeVoiceCalls = await db.meeting.findMany({
+        where: {
+          status: "ACTIVE",
+          type: "VOICE",
+          createdById: { in: friendIds },
+          createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
+        },
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              displayName: true,
+              imageUrl: true,
+            },
+          },
+        },
+      });
+
+      return NextResponse.json(activeVoiceCalls);
     }
 
     const meeting = await db.meeting.findUnique({

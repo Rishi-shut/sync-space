@@ -14,6 +14,8 @@ import {
   MessageSquare,
   Video as VideoIcon,
   Settings as SettingsIcon,
+  Phone,
+  PhoneOff,
 } from "lucide-react";
 import { useUIStore } from "@/stores/ui-store";
 import Image from "next/image";
@@ -46,6 +48,10 @@ export default function Navbar({ user }: NavbarProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
 
+  // Active voice call states
+  const [incomingCall, setIncomingCall] = useState<any | null>(null);
+  const [declinedCalls, setDeclinedCalls] = useState<string[]>([]);
+
   const fetchNotifications = async () => {
     try {
       const res = await fetch("/api/friends");
@@ -58,11 +64,34 @@ export default function Navbar({ user }: NavbarProps) {
     }
   };
 
+  const fetchActiveCalls = async () => {
+    try {
+      const res = await fetch("/api/meetings");
+      if (res.ok) {
+        const calls = await res.json();
+        const activeCall = calls.find((c: any) => !declinedCalls.includes(c.id));
+        if (activeCall) {
+          setIncomingCall(activeCall);
+        } else {
+          setIncomingCall(null);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch active calls:", err);
+    }
+  };
+
   useEffect(() => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 15000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    fetchActiveCalls();
+    const interval = setInterval(fetchActiveCalls, 5000);
+    return () => clearInterval(interval);
+  }, [declinedCalls]);
 
   const handleNotifAction = async (friendshipId: string, action: "ACCEPT" | "DECLINE") => {
     try {
@@ -130,6 +159,7 @@ export default function Navbar({ user }: NavbarProps) {
   };
 
   return (
+    <>
     <header className="h-20 border-b border-border flex items-center justify-between px-6 bg-background/80 backdrop-blur-md relative z-30 select-none">
       {/* Left side: mobile toggle + Page title */}
       <div className="flex items-center gap-4">
@@ -323,5 +353,67 @@ export default function Navbar({ user }: NavbarProps) {
         </button>
       </div>
     </header>
+    {incomingCall && (
+      <div className="fixed bottom-6 right-6 z-50 animate-fadeInUp max-w-sm w-full bg-[#090c15] border border-accent/20 rounded-3xl p-5 shadow-2xl shadow-accent/10 backdrop-blur-xl">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-accent relative flex-shrink-0">
+              {incomingCall.createdBy.imageUrl ? (
+                <Image
+                  src={incomingCall.createdBy.imageUrl}
+                  alt={incomingCall.createdBy.displayName || "Friend"}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-accent/20 flex items-center justify-center text-accent font-bold">
+                  {incomingCall.createdBy.displayName?.[0] || "F"}
+                </div>
+              )}
+            </div>
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
+            </span>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold text-white uppercase tracking-wider animate-pulse">
+              Incoming Voice Call
+            </p>
+            <p className="text-sm font-semibold text-text-primary truncate">
+              {incomingCall.createdBy.displayName || "Friend"}
+            </p>
+            <p className="text-[10px] text-text-secondary">
+              Calling you...
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 mt-4">
+          <button
+            onClick={() => {
+              router.push(`/dashboard/meetings/${incomingCall.code}`);
+              setIncomingCall(null);
+            }}
+            className="flex-1 btn-primary py-2 text-xs font-bold justify-center rounded-xl bg-accent hover:bg-accent-hover text-white flex items-center gap-1.5 cursor-pointer shadow-lg shadow-accent/15"
+          >
+            <Phone className="w-4 h-4" />
+            <span>Accept</span>
+          </button>
+          <button
+            onClick={() => {
+              setDeclinedCalls((prev) => [...prev, incomingCall.id]);
+              setIncomingCall(null);
+            }}
+            className="flex-1 btn-secondary py-2 text-xs font-bold justify-center rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 flex items-center gap-1.5 cursor-pointer"
+          >
+            <PhoneOff className="w-4 h-4" />
+            <span>Decline</span>
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

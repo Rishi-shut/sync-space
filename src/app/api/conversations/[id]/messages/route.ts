@@ -201,56 +201,6 @@ export async function POST(
       data: { updatedAt: new Date() },
     });
 
-    // Check if conversation includes the bot to trigger automated response
-    const botId = "sync-assistant-bot";
-    const fullConversation = await db.conversation.findUnique({
-      where: { id: conversationId },
-      include: {
-        members: true,
-      },
-    });
-
-    const hasBot = fullConversation?.members.some((m: any) => m.userId === botId);
-    if (hasBot && dbUser.clerkId !== botId) {
-      // Trigger non-blocking async reply
-      (async () => {
-        try {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          const botRecord = await db.user.findUnique({ where: { clerkId: botId } });
-          if (!botRecord) return;
-
-          let botReplyText = "I am the Sync Assistant. I'm here to help you test messaging!";
-          const userMessage = (content || "").toLowerCase();
-          
-          if (userMessage.includes("hello") || userMessage.includes("hi")) {
-            botReplyText = `Hello ${dbUser.displayName || "there"}! Welcome to Sync Space. How can I help you today?`;
-          } else if (userMessage.includes("help")) {
-            botReplyText = "You can chat with me, test video calls in the Meetings section, or explore user presence settings in the top navbar!";
-          } else if (userMessage.includes("meeting") || userMessage.includes("video")) {
-            botReplyText = "To test meetings, go to the Meetings section in the sidebar. You can start an instant video room or schedule one!";
-          } else {
-            botReplyText = `Received your message: "${content}". Sync Space real-time messaging is fully active and database-synced!`;
-          }
-
-          await db.message.create({
-            data: {
-              content: botReplyText,
-              type: "TEXT",
-              conversationId,
-              senderId: botRecord.id,
-            },
-          });
-
-          await db.conversation.update({
-            where: { id: conversationId },
-            data: { updatedAt: new Date() },
-          });
-        } catch (err) {
-          console.error("Bot automatic response failed:", err);
-        }
-      })();
-    }
-
     return NextResponse.json(message);
   } catch (error) {
     console.error("[MESSAGE_CREATE_ERROR]", error);

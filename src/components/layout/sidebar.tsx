@@ -14,7 +14,6 @@ import {
   Zap,
   LogOut,
   Users,
-  Home,
 } from "lucide-react";
 import { useClerk } from "@clerk/nextjs";
 import { useUIStore } from "@/stores/ui-store";
@@ -36,7 +35,6 @@ const navItems = [
   { label: "Meetings",     href: "/dashboard/meetings",  icon: Video           },
   { label: "Friends",      href: "/dashboard/friends",   icon: Users           },
   { label: "Settings",     href: "/dashboard/settings",  icon: Settings        },
-  { label: "Landing Page", href: "/",                    icon: Home            },
 ];
 
 export default function Sidebar({ user }: SidebarProps) {
@@ -76,7 +74,7 @@ export default function Sidebar({ user }: SidebarProps) {
         {/* ── Brand ───────────────────────────────── */}
         <div className="h-[60px] px-4 flex items-center justify-between border-b border-border-subtle flex-shrink-0">
           {!sidebarCollapsed ? (
-            <Link href="/dashboard" className="flex items-center gap-2.5 group">
+            <Link href="/" className="flex items-center gap-2.5 group">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-accent shadow-lg shadow-accent/20 flex-shrink-0">
                 <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
               </div>
@@ -85,9 +83,9 @@ export default function Sidebar({ user }: SidebarProps) {
               </span>
             </Link>
           ) : (
-            <div className="mx-auto w-8 h-8 rounded-xl flex items-center justify-center bg-accent shadow-lg shadow-accent/20">
+            <Link href="/" className="mx-auto w-8 h-8 rounded-xl flex items-center justify-center bg-accent shadow-lg shadow-accent/20 cursor-pointer">
               <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
-            </div>
+            </Link>
           )}
 
           {!sidebarCollapsed && (
@@ -249,7 +247,7 @@ export default function Sidebar({ user }: SidebarProps) {
             >
               {/* Brand Header */}
               <div className="h-[60px] px-4 flex items-center justify-between border-b border-border-subtle flex-shrink-0">
-                <Link href="/dashboard" className="flex items-center gap-2.5 group" onClick={toggleSidebar}>
+                <Link href="/" className="flex items-center gap-2.5 group" onClick={toggleSidebar}>
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-accent shadow-lg shadow-accent/20 flex-shrink-0">
                     <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
                   </div>
