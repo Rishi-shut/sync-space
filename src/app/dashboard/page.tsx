@@ -19,29 +19,28 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  // Real database counts
-  const conversationCount = await db.conversationMember.count({
-    where: { userId: user.id },
-  });
-
-  const activeMeetingCount = await db.meeting.count({
-    where: {
-      createdById: user.id,
-      status: "ACTIVE",
-    },
-  });
-
-  // Upcoming scheduled meetings
-  const upcomingMeetings = await db.meeting.findMany({
-    where: {
-      createdById: user.id,
-      status: "SCHEDULED",
-    },
-    orderBy: {
-      scheduledAt: "asc",
-    },
-    take: 3,
-  });
+  // Real database counts (parallelized for fast query execution)
+  const [conversationCount, activeMeetingCount, upcomingMeetings] = await Promise.all([
+    db.conversationMember.count({
+      where: { userId: user.id },
+    }),
+    db.meeting.count({
+      where: {
+        createdById: user.id,
+        status: "ACTIVE",
+      },
+    }),
+    db.meeting.findMany({
+      where: {
+        createdById: user.id,
+        status: "SCHEDULED",
+      },
+      orderBy: {
+        scheduledAt: "asc",
+      },
+      take: 3,
+    }),
+  ]);
 
   // Greet user based on local time
   const hour = new Date().getHours();
