@@ -130,7 +130,7 @@ export default function Navbar({ user }: NavbarProps) {
   };
 
   return (
-    <header className="h-20 border-b border-border flex items-center justify-between px-6 bg-background/80 backdrop-blur-md relative z-10 select-none">
+    <header className="h-20 border-b border-border flex items-center justify-between px-6 bg-background/80 backdrop-blur-md relative z-30 select-none">
       {/* Left side: mobile toggle + Page title */}
       <div className="flex items-center gap-4">
         <button
