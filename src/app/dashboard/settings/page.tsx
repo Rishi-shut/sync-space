@@ -10,8 +10,34 @@ export default function SettingsPage() {
   const { user: clerkUser, isLoaded } = useUser();
   const { theme, setTheme } = useTheme();
 
+  const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
   const [isDiagnosticRunning, setIsDiagnosticRunning] = useState(false);
   const [diagnosticResults, setDiagnosticResults] = useState(false);
+
+  // Load user profile details
+  useEffect(() => {
+    if (clerkUser) {
+      const name = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
+      setDisplayName(name || clerkUser.username || "");
+
+      // Retrieve current database record to load bio
+      fetch("/api/user/sync", { method: "POST" })
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to sync user data");
+          return res.json();
+        })
+        .then((data) => {
+          if (data.bio) setBio(data.bio);
+          if (data.displayName) setDisplayName(data.displayName);
+        })
+        .catch((err) => console.error("Error loading user profile:", err));
+    }
+  }, [clerkUser]);
 
   const handleRunDiagnostics = () => {
     setIsDiagnosticRunning(true);
