@@ -23,7 +23,7 @@ export default async function MessagesLayout({
   }
 
   return (
-    <div className="flex h-[calc(100vh-80px)] overflow-hidden">
+    <div className="flex w-full h-[calc(100vh-80px)] overflow-hidden">
       {/* Conversations list sidebar */}
       <ConversationListClient userId={dbUser.id} />
 

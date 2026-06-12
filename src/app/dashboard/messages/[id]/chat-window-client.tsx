@@ -201,7 +201,7 @@ export default function ChatWindowClient({
   const displayName = isDirect ? partner?.displayName || "User" : conversation.name || "Group Chat";
 
   return (
-    <div className="flex flex-col h-full bg-background select-none">
+    <div className="flex flex-col w-full h-full bg-background select-none">
       {/* Top Header Panel */}
       <div className="h-16 px-6 border-b border-border flex items-center justify-between bg-card">
         <div className="flex items-center gap-3">
