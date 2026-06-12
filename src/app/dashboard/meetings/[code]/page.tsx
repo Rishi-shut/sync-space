@@ -82,10 +82,16 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
     },
   });
 
+  const clientMeeting = {
+    ...meeting,
+    password: null, // Hide actual password
+    hasPassword: !!meeting.password,
+  };
+
   return (
     <MeetingRoomClient
       user={JSON.parse(JSON.stringify(user))}
-      meeting={JSON.parse(JSON.stringify(meeting))}
+      meeting={JSON.parse(JSON.stringify(clientMeeting))}
       initialParticipants={JSON.parse(JSON.stringify(activeParticipants.map(ap => ap.user)))}
     />
   );

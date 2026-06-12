@@ -118,6 +118,8 @@ export default function MeetingRoomClient({
   initialParticipants,
 }: MeetingRoomClientProps) {
   const router = useRouter();
+  const isPersonalCall = meeting.title.toLowerCase().includes("call with");
+  const meetingTerm = meeting.type === "VOICE" || isPersonalCall ? "Call" : "Meeting";
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -410,13 +412,17 @@ export default function MeetingRoomClient({
         const rawParticipants = data.participants || [];
 
         // Check if we are approved
-        const myParticipant = rawParticipants.find((p: any) => p.userId === user.id);
+        const myParticipant = data.myParticipant;
         if (!isHost) {
           if (!myParticipant) {
             setWasDenied(true);
             return;
           }
-          if (myParticipant.isApproved) {
+          if (myParticipant.isApproved === false) {
+            setWasDenied(true);
+            return;
+          }
+          if (myParticipant.isApproved === true) {
             setIsApprovedByHost(true);
           }
         } else {
@@ -603,6 +609,7 @@ export default function MeetingRoomClient({
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     router.push("/dashboard/meetings");
+    router.refresh();
   };
 
   const confirmEndMeeting = async () => {
@@ -617,6 +624,7 @@ export default function MeetingRoomClient({
         localStreamRef.current?.getTracks().forEach((t) => t.stop());
         screenStreamRef.current?.getTracks().forEach((t) => t.stop());
         router.push("/dashboard/meetings");
+        router.refresh();
       }
     } catch (err) {
       console.error("[Meeting] Failed to end meeting:", err);
@@ -737,7 +745,18 @@ export default function MeetingRoomClient({
             </p>
           </div>
           <button
-            onClick={handleLeave}
+            onClick={async () => {
+              try {
+                await fetch("/api/meetings", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ code: meeting.code, status: "LEFT" }),
+                });
+              } catch (_) {}
+              localStreamRef.current?.getTracks().forEach((t) => t.stop());
+              router.push("/dashboard/meetings");
+              router.refresh();
+            }}
             className="w-full btn-secondary py-3 text-xs font-semibold justify-center cursor-pointer"
           >
             Cancel and Leave
@@ -757,11 +776,11 @@ export default function MeetingRoomClient({
         <div className="w-full max-w-2xl bg-[#09090b] border border-[#27272a] rounded-2xl p-8 shadow-2xl space-y-6">
           <div className="text-center space-y-1">
             <span className="text-[10px] font-bold text-accent tracking-wider uppercase">
-              {isVoice ? "Voice Call Lobby" : "Meeting Lobby"}
+              {isVoice ? "Voice Call Lobby" : `${meetingTerm} Lobby`}
             </span>
             <h2 className="text-xl font-bold text-white tracking-tight">{meeting.title}</h2>
             <p className="text-xs text-[#a1a1aa]">
-              {isVoice ? "Review your audio settings before joining." : "Review your camera and audio settings before joining."}
+              {isVoice ? "Review your audio settings before joining." : `Review your camera and audio settings before joining.`}
             </p>
           </div>
 
@@ -822,16 +841,29 @@ export default function MeetingRoomClient({
 
           <div className="flex gap-4">
             <button
-              onClick={handleLeave}
+              onClick={() => {
+                localStreamRef.current?.getTracks().forEach((t) => t.stop());
+                router.push("/dashboard/meetings");
+                router.refresh();
+              }}
               className="flex-1 btn-secondary py-3 text-xs font-semibold justify-center cursor-pointer"
             >
               Cancel
             </button>
             <button
-              onClick={() => setJoined(true)}
+              onClick={async () => {
+                try {
+                  await fetch("/api/meetings", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ code: meeting.code, status: "JOINED" }),
+                  });
+                } catch (_) {}
+                setJoined(true);
+              }}
               className="flex-1 btn-primary py-3 text-xs font-semibold justify-center cursor-pointer"
             >
-              {isVoice ? "Join Voice Call" : "Join Meeting"}
+              {isVoice ? "Join Voice Call" : `Join ${meetingTerm}`}
             </button>
           </div>
         </div>
@@ -1116,7 +1148,7 @@ export default function MeetingRoomClient({
           {/* Leave */}
           <button
             onClick={handleLeave}
-            title="Leave Meeting"
+            title={`Leave ${meetingTerm}`}
             className="p-3.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:scale-105 active:scale-95 transition-all shadow-md shadow-amber-950/10 cursor-pointer flex items-center justify-center"
           >
             <PhoneOff className="w-5 h-5" />
@@ -1126,11 +1158,11 @@ export default function MeetingRoomClient({
           {meeting.createdById === user.id && (
             <button
               onClick={handleEndMeeting}
-              title={meeting.type === "VOICE" ? "End Voice Call for Everyone" : "End Meeting for Everyone"}
+              title={meeting.type === "VOICE" ? "End Voice Call for Everyone" : `End ${meetingTerm} for Everyone`}
               className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-semibold text-xs border border-rose-500/30 shadow-lg shadow-rose-950/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
               <PhoneOff className="w-4 h-4" />
-              <span className="text-xs font-bold">{meeting.type === "VOICE" ? "End Call" : "End Meeting"}</span>
+              <span className="text-xs font-bold">{meeting.type === "VOICE" ? "End Call" : `End ${meetingTerm}`}</span>
             </button>
           )}
         </div>
@@ -1141,9 +1173,9 @@ export default function MeetingRoomClient({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowEndModal(false)} />
           <div className="bg-[#14141b] border border-[#24242e] rounded-2xl p-6 max-w-sm w-full relative z-10 space-y-4 animate-scaleIn shadow-2xl">
-            <h3 className="text-sm font-bold text-white">End Meeting?</h3>
+            <h3 className="text-sm font-bold text-white">End {meetingTerm}?</h3>
             <p className="text-xs text-[#a1a1aa] leading-relaxed">
-              Are you sure you want to end this meeting? This will disconnect all participants and delete the meeting room.
+              Are you sure you want to end this {meetingTerm.toLowerCase()}? This will disconnect all participants and delete the room.
             </p>
             <div className="flex items-center gap-2 pt-2">
               <button
@@ -1151,14 +1183,14 @@ export default function MeetingRoomClient({
                   setShowEndModal(false);
                   confirmEndMeeting();
                 }}
-                className="flex-1 btn-primary bg-rose-600 hover:bg-rose-700 py-2 text-xs font-semibold rounded-xl text-white cursor-pointer"
+                className="flex-1 btn-primary bg-rose-600 hover:bg-rose-700 py-2.5 text-xs font-semibold rounded-xl text-white cursor-pointer justify-center"
               >
-                Yes, End Meeting
+                Yes, End {meetingTerm}
               </button>
               <button
                 type="button"
                 onClick={() => setShowEndModal(false)}
-                className="flex-1 btn-secondary bg-[#0f0f13] hover:bg-[#1b1b24] py-2 text-xs font-semibold rounded-xl border border-[#24242e] text-[#fafafa] cursor-pointer"
+                className="flex-1 btn-secondary bg-[#0f0f13] hover:bg-[#1b1b24] py-2.5 text-xs font-semibold rounded-xl border border-[#24242e] text-[#fafafa] cursor-pointer justify-center"
               >
                 Cancel
               </button>
@@ -1172,9 +1204,9 @@ export default function MeetingRoomClient({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowLeaveModal(false)} />
           <div className="bg-[#14141b] border border-[#24242e] rounded-2xl p-6 max-w-sm w-full relative z-10 space-y-4 animate-scaleIn shadow-2xl">
-            <h3 className="text-sm font-bold text-white">Leave Meeting?</h3>
+            <h3 className="text-sm font-bold text-white">Leave {meetingTerm}?</h3>
             <p className="text-xs text-[#a1a1aa] leading-relaxed">
-              Are you sure you want to leave the meeting? Other participants will remain connected.
+              Are you sure you want to leave this {meetingTerm.toLowerCase()}? Other participants will remain connected.
             </p>
             <div className="flex items-center gap-2 pt-2">
               <button
@@ -1182,14 +1214,14 @@ export default function MeetingRoomClient({
                   setShowLeaveModal(false);
                   confirmLeaveMeeting();
                 }}
-                className="flex-1 btn-primary bg-rose-600 hover:bg-rose-700 py-2 text-xs font-semibold rounded-xl text-white cursor-pointer"
+                className="flex-1 btn-primary bg-rose-600 hover:bg-rose-700 py-2.5 text-xs font-semibold rounded-xl text-white cursor-pointer justify-center"
               >
                 Yes, Leave
               </button>
               <button
                 type="button"
                 onClick={() => setShowLeaveModal(false)}
-                className="flex-1 btn-secondary bg-[#0f0f13] hover:bg-[#1b1b24] py-2 text-xs font-semibold rounded-xl border border-[#24242e] text-[#fafafa] cursor-pointer"
+                className="flex-1 btn-secondary bg-[#0f0f13] hover:bg-[#1b1b24] py-2.5 text-xs font-semibold rounded-xl border border-[#24242e] text-[#fafafa] cursor-pointer justify-center"
               >
                 Cancel
               </button>

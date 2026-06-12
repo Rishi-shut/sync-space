@@ -139,6 +139,7 @@ export async function PATCH(req: Request) {
         },
         data: {
           leftAt: new Date(),
+          isApproved: false,
         },
       });
       return NextResponse.json({ success: true });
@@ -286,11 +287,20 @@ export async function GET(req: Request) {
       }
     }
 
+    // Find the caller's own participant record
+    const myParticipant = await db.meetingParticipant.findFirst({
+      where: {
+        meetingId: meeting.id,
+        userId: dbUser.id,
+      },
+    });
+
     const hasPassword = !!meeting.password;
     const clientMeeting = {
       ...meeting,
       password: null,
       hasPassword,
+      myParticipant,
     };
 
     return NextResponse.json(clientMeeting);
