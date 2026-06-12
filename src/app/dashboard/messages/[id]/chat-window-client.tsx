@@ -67,6 +67,7 @@ export default function ChatWindowClient({
   const [isSending, setIsSending] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -170,19 +171,13 @@ export default function ChatWindowClient({
   };
 
   const handleDeleteChat = async () => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to permanently delete this chat and all its messages? This action cannot be undone."
-    );
-    if (!confirmDelete) return;
-
     setIsDeleting(true);
     try {
       const res = await fetch(`/api/conversations/${conversation.id}`, {
         method: "DELETE",
       });
       if (res.ok) {
-        router.push("/dashboard/messages");
-        router.refresh();
+        window.location.href = "/dashboard/messages";
       } else {
         alert("Failed to delete the chat.");
       }
@@ -370,7 +365,7 @@ export default function ChatWindowClient({
           )}
 
           <button
-            onClick={handleDeleteChat}
+            onClick={() => setShowDeleteConfirm(true)}
             disabled={isDeleting}
             className="p-2 rounded-lg border border-border bg-card text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all cursor-pointer flex items-center justify-center"
             title="Delete Chat"
@@ -565,6 +560,37 @@ export default function ChatWindowClient({
           </button>
         </div>
       </form>
+
+      {/* Delete Chat Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
+          <div className="bg-[#14141b] border border-[#24242e] rounded-2xl p-6 max-w-sm w-full relative z-10 space-y-4 animate-scaleIn shadow-2xl">
+            <h3 className="text-sm font-bold text-white">Delete Chat?</h3>
+            <p className="text-xs text-[#a1a1aa] leading-relaxed">
+              Are you sure you want to permanently delete this chat and all its messages? This action cannot be undone.
+            </p>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  handleDeleteChat();
+                }}
+                className="flex-1 btn-primary bg-rose-600 hover:bg-rose-700 py-2.5 text-xs font-semibold rounded-xl text-white cursor-pointer justify-center animate-none"
+              >
+                Yes, Delete
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 btn-secondary bg-[#0f0f13] hover:bg-[#1b1b24] py-2.5 text-xs font-semibold rounded-xl border border-[#24242e] text-[#fafafa] cursor-pointer justify-center"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

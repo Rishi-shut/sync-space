@@ -127,7 +127,7 @@ export default function MeetingRoomClient({
   const [micActive, setMicActive] = useState(true);
   const [camActive, setCamActive] = useState(meeting.type !== "VOICE");
   const [screenSharing, setScreenSharing] = useState(false);
-  const [joined, setJoined] = useState(false);
+  const [joined, setJoined] = useState(isPersonalCall);
   const [copied, setCopied] = useState(false);
   const [activeParticipants, setActiveParticipants] = useState<UserInfo[]>(initialParticipants);
   const [remotePeers, setRemotePeers] = useState<Record<string, RemotePeer>>({});
@@ -228,6 +228,20 @@ export default function MeetingRoomClient({
   useEffect(() => {
     isMountedRef.current = true;
     startLocalMedia();
+
+    // Reset leftAt status in PostgreSQL DB on mount to clear any strict-mode unmount beacons
+    const markAsJoined = async () => {
+      try {
+        await fetch("/api/meetings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: meeting.code, status: "JOINED" }),
+        });
+      } catch (err) {
+        console.error("[Meeting] Failed to reset JOINED status on mount:", err);
+      }
+    };
+    markAsJoined();
 
     const handleUnload = () =>
       navigator.sendBeacon("/api/meetings/leave", JSON.stringify({ code: meeting.code }));
@@ -405,7 +419,7 @@ export default function MeetingRoomClient({
         if (data.status === "ENDED") {
           localStreamRef.current?.getTracks().forEach((t) => t.stop());
           screenStreamRef.current?.getTracks().forEach((t) => t.stop());
-          router.push("/dashboard/meetings?ended=true");
+          window.location.href = "/dashboard/meetings?ended=true";
           return;
         }
 
@@ -418,7 +432,7 @@ export default function MeetingRoomClient({
             setWasDenied(true);
             return;
           }
-          if (myParticipant.isApproved === false) {
+          if (myParticipant.isApproved === false && myParticipant.leftAt !== null) {
             setWasDenied(true);
             return;
           }
@@ -608,8 +622,7 @@ export default function MeetingRoomClient({
     peerRef.current?.destroy();
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
-    router.push("/dashboard/meetings");
-    router.refresh();
+    window.location.href = "/dashboard/meetings";
   };
 
   const confirmEndMeeting = async () => {
@@ -623,8 +636,7 @@ export default function MeetingRoomClient({
         peerRef.current?.destroy();
         localStreamRef.current?.getTracks().forEach((t) => t.stop());
         screenStreamRef.current?.getTracks().forEach((t) => t.stop());
-        router.push("/dashboard/meetings");
-        router.refresh();
+        window.location.href = "/dashboard/meetings";
       }
     } catch (err) {
       console.error("[Meeting] Failed to end meeting:", err);
@@ -668,14 +680,14 @@ export default function MeetingRoomClient({
             </span>
             <h2 className="text-xl font-bold text-white tracking-tight">{meeting.title}</h2>
             <p className="text-xs text-[#a1a1aa]">
-              This meeting is password-protected. Please enter the password to join.
+              This {meetingTerm.toLowerCase()} is password-protected. Please enter the password to join.
             </p>
           </div>
 
           <div className="space-y-2">
             <input
               type="password"
-              placeholder="Meeting password"
+              placeholder={`${meetingTerm} password`}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full input text-xs py-2 bg-[#0c0c0e] border-[#27272a] text-white outline-none focus:border-accent/50"
@@ -689,7 +701,7 @@ export default function MeetingRoomClient({
           <div className="flex gap-4">
             <button
               type="button"
-              onClick={() => router.push("/dashboard/meetings")}
+              onClick={() => { window.location.href = "/dashboard/meetings"; }}
               className="flex-1 btn-secondary py-3 text-xs font-semibold justify-center cursor-pointer"
             >
               Go Back
@@ -716,14 +728,14 @@ export default function MeetingRoomClient({
             </span>
             <h2 className="text-xl font-bold text-white tracking-tight">Admission Refused</h2>
             <p className="text-xs text-[#a1a1aa] leading-relaxed">
-              The meeting host did not approve your request to join, or you have been removed from the call.
+              The {meetingTerm.toLowerCase()} host did not approve your request to join, or you have been removed from the call.
             </p>
           </div>
           <button
-            onClick={() => router.push("/dashboard/meetings")}
+            onClick={() => { window.location.href = "/dashboard/meetings"; }}
             className="w-full btn-primary py-3 text-xs font-semibold justify-center cursor-pointer"
           >
-            Return to Meetings
+            Return to {meetingTerm === "Call" ? "Calls" : "Meetings"}
           </button>
         </div>
       </div>
@@ -754,8 +766,7 @@ export default function MeetingRoomClient({
                 });
               } catch (_) {}
               localStreamRef.current?.getTracks().forEach((t) => t.stop());
-              router.push("/dashboard/meetings");
-              router.refresh();
+              window.location.href = "/dashboard/meetings";
             }}
             className="w-full btn-secondary py-3 text-xs font-semibold justify-center cursor-pointer"
           >
@@ -843,8 +854,7 @@ export default function MeetingRoomClient({
             <button
               onClick={() => {
                 localStreamRef.current?.getTracks().forEach((t) => t.stop());
-                router.push("/dashboard/meetings");
-                router.refresh();
+                window.location.href = "/dashboard/meetings";
               }}
               className="flex-1 btn-secondary py-3 text-xs font-semibold justify-center cursor-pointer"
             >

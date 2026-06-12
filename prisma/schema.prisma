@@ -135,6 +135,7 @@ model Attachment {
   message  Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   uploader User    @relation(fields: [uploaderId], references: [id])
 
+  @@index([messageId])
   @@map("attachments")
 }
 
