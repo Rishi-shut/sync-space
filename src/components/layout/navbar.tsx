@@ -69,7 +69,11 @@ export default function Navbar({ user }: NavbarProps) {
       const res = await fetch("/api/meetings");
       if (res.ok) {
         const calls = await res.json();
-        const activeCall = calls.find((c: any) => !declinedCalls.includes(c.id));
+        const activeCall = calls.find((c: any) => {
+          if (declinedCalls.includes(c.id)) return false;
+          if (pathname === `/dashboard/meetings/${c.code}`) return false;
+          return true;
+        });
         if (activeCall) {
           setIncomingCall(activeCall);
         } else {

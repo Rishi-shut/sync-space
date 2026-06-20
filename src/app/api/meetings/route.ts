@@ -174,6 +174,24 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    // Update participant flags (isScreenSharing, isMuted, etc.)
+    if (status === "UPDATE_FLAGS") {
+      const { isScreenSharing, isMuted, isCameraOff } = body;
+      await db.meetingParticipant.updateMany({
+        where: {
+          meetingId: meeting.id,
+          userId: dbUser.id,
+          leftAt: null,
+        },
+        data: {
+          ...(isScreenSharing !== undefined && { isScreenSharing }),
+          ...(isMuted !== undefined && { isMuted }),
+          ...(isCameraOff !== undefined && { isCameraOff }),
+        },
+      });
+      return NextResponse.json({ success: true });
+    }
+
     // Only host can end the meeting
     if (meeting.createdById !== dbUser.id) {
       return new NextResponse("Forbidden: Only host can end meeting", { status: 403 });
