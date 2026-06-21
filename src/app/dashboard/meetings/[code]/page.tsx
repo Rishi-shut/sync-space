@@ -1,10 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { db, getSessionUser } from "@/lib/db";
-import dynamic from "next/dynamic";
-
-const MeetingRoomClient = dynamic(() => import("./meeting-room-client"), {
-  ssr: false,
-});
+import MeetingRoomClientWrapper from "./meeting-room-client-wrapper";
 
 interface MeetingPageProps {
   params: Promise<{ code: string }>;
@@ -89,7 +85,7 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
   };
 
   return (
-    <MeetingRoomClient
+    <MeetingRoomClientWrapper
       user={JSON.parse(JSON.stringify(user))}
       meeting={JSON.parse(JSON.stringify(clientMeeting))}
       initialParticipants={JSON.parse(JSON.stringify(activeParticipants.map(ap => ap.user)))}
