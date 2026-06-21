@@ -52,7 +52,32 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(conversations);
+    // Calculate actual unread counts based on lastReadAt and messages from other users
+    const conversationsWithUnread = await Promise.all(
+      conversations.map(async (convo) => {
+        const myMember = convo.members.find((m) => m.userId === dbUser.id);
+        const lastReadAt = myMember?.lastReadAt || new Date(0);
+
+        const unreadCount = await db.message.count({
+          where: {
+            conversationId: convo.id,
+            createdAt: {
+              gt: lastReadAt,
+            },
+            senderId: {
+              not: dbUser.id,
+            },
+          },
+        });
+
+        return {
+          ...convo,
+          unreadCount,
+        };
+      })
+    );
+
+    return NextResponse.json(conversationsWithUnread);
   } catch (error) {
     console.error("[CONVERSATIONS_GET_ERROR]", error);
     return new NextResponse("Internal Server Error", { status: 500 });

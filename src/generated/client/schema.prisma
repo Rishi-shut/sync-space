@@ -22,6 +22,7 @@ model User {
   bio         String?
   status      UserStatus @default(ONLINE)
   theme       String     @default("dark")
+  isOnboarded Boolean    @default(false)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -30,6 +31,7 @@ model User {
   memberships         ConversationMember[]
   meetingParticipants MeetingParticipant[]
   createdMeetings     Meeting[]            @relation("MeetingCreator")
+  receivedMeetings    Meeting[]            @relation("MeetingRecipient")
   reactions           Reaction[]
   sentFiles           Attachment[]
   sentFriendships     Friendship[]         @relation("SentFriendships")
@@ -56,6 +58,7 @@ model Conversation {
 
   members  ConversationMember[]
   messages Message[]
+  meetings Meeting[]
 
   @@map("conversations")
 }
@@ -135,6 +138,7 @@ model Attachment {
   message  Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   uploader User    @relation(fields: [uploaderId], references: [id])
 
+  @@index([messageId])
   @@map("attachments")
 }
 
@@ -173,10 +177,16 @@ model Meeting {
   password        String?
   requireApproval Boolean @default(false)
 
+  conversationId String?
+  recipientId    String?
+
   createdBy    User                 @relation("MeetingCreator", fields: [createdById], references: [id])
+  recipient    User?                @relation("MeetingRecipient", fields: [recipientId], references: [id])
+  conversation Conversation?        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   participants MeetingParticipant[]
 
   @@index([createdById, status])
+  @@index([recipientId, status])
   @@map("meetings")
 }
 

@@ -83,3 +83,43 @@ export async function DELETE(
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const dbUser = await db.user.findUnique({
+      where: { clerkId: userId },
+    });
+
+    if (!dbUser) {
+      return new NextResponse("User not found in local DB", { status: 404 });
+    }
+
+    const { id: conversationId } = await params;
+
+    // Update the lastReadAt timestamp for this conversation member
+    await db.conversationMember.update({
+      where: {
+        conversationId_userId: {
+          conversationId,
+          userId: dbUser.id,
+        },
+      },
+      data: {
+        lastReadAt: new Date(),
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[CONVERSATION_PATCH_ERROR]", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}

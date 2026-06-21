@@ -35,6 +35,7 @@ interface Conversation {
   type: string;
   members: ConversationMember[];
   messages: Message[];
+  unreadCount?: number;
 }
 
 interface ConversationListClientProps {
@@ -70,6 +71,8 @@ export default function ConversationListClient({ userId }: ConversationListClien
 
   useEffect(() => {
     fetchConversations();
+    const interval = setInterval(fetchConversations, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   // Fetch potential chat partners when opening modal
@@ -208,8 +211,13 @@ export default function ConversationListClient({ userId }: ConversationListClien
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold truncate text-text-primary">{displayName}</span>
+                    {convo.unreadCount !== undefined && convo.unreadCount > 0 && (
+                      <span className="w-4.5 h-4.5 min-w-[18px] px-1 rounded-full bg-accent text-[9px] font-bold text-white flex items-center justify-center flex-shrink-0 animate-pulse">
+                        {convo.unreadCount}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-[10px] text-text-muted truncate mt-0.5">
+                  <p className={`text-[10px] truncate mt-0.5 ${convo.unreadCount !== undefined && convo.unreadCount > 0 ? "text-text-primary font-medium" : "text-text-muted"}`}>
                     {lastMessage}
                   </p>
                 </div>

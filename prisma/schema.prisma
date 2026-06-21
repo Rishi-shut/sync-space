@@ -22,6 +22,7 @@ model User {
   bio         String?
   status      UserStatus @default(ONLINE)
   theme       String     @default("dark")
+  isOnboarded Boolean    @default(false)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 

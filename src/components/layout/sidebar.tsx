@@ -115,6 +115,7 @@ export default function Sidebar({ user }: SidebarProps) {
               (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
             const Icon = item.icon;
 
+            const totalUnreads = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
             return (
               <Link
                 key={item.label}
@@ -134,8 +135,8 @@ export default function Sidebar({ user }: SidebarProps) {
                 {!sidebarCollapsed && (
                   <span className="text-[13.5px] flex-1 truncate">{item.label}</span>
                 )}
-                {!sidebarCollapsed && item.label === "Messages" && conversations.length > 0 && (
-                  <span className="badge text-[10px]">{conversations.length}</span>
+                {!sidebarCollapsed && item.label === "Messages" && totalUnreads > 0 && (
+                  <span className="badge text-[10px] bg-accent text-white">{totalUnreads}</span>
                 )}
               </Link>
             );
@@ -175,7 +176,10 @@ export default function Sidebar({ user }: SidebarProps) {
                           />
                         )}
                       </div>
-                      <span className="truncate">{displayName}</span>
+                      <span className="truncate flex-1">{displayName}</span>
+                      {convo.unreadCount > 0 && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0 animate-pulse" />
+                      )}
                     </Link>
                   );
                 })}
@@ -271,6 +275,7 @@ export default function Sidebar({ user }: SidebarProps) {
                     (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
                   const Icon = item.icon;
 
+                  const totalUnreads = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
                   return (
                     <Link
                       key={item.label}
@@ -288,8 +293,8 @@ export default function Sidebar({ user }: SidebarProps) {
                         }`}
                       />
                       <span className="text-[13.5px] flex-1 truncate">{item.label}</span>
-                      {item.label === "Messages" && conversations.length > 0 && (
-                        <span className="badge text-[10px]">{conversations.length}</span>
+                      {item.label === "Messages" && totalUnreads > 0 && (
+                        <span className="badge text-[10px] bg-accent text-white">{totalUnreads}</span>
                       )}
                     </Link>
                   );
@@ -330,7 +335,10 @@ export default function Sidebar({ user }: SidebarProps) {
                                 />
                               )}
                             </div>
-                            <span className="truncate">{displayName}</span>
+                            <span className="truncate flex-1">{displayName}</span>
+                            {convo.unreadCount > 0 && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0 animate-pulse" />
+                            )}
                           </Link>
                         );
                       })}

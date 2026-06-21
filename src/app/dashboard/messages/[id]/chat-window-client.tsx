@@ -192,6 +192,20 @@ export default function ChatWindowClient({
     setMounted(true);
   }, []);
 
+  // Mark conversation as read
+  useEffect(() => {
+    const markAsRead = async () => {
+      try {
+        await fetch(`/api/conversations/${conversation.id}`, {
+          method: "PATCH",
+        });
+      } catch (err) {
+        console.error("Failed to mark conversation as read:", err);
+      }
+    };
+    markAsRead();
+  }, [conversation.id, messages.length]);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);

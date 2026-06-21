@@ -1,6 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
+import { getSessionUser } from "@/lib/db";
 import Sidebar from "@/components/layout/sidebar";
 import Navbar from "@/components/layout/navbar";
 import PageTransition from "@/components/layout/page-transition";
@@ -10,18 +9,15 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
-  if (!userId) {
+  const user = await getSessionUser();
+
+  // Redirect if user not logged in or doesn't exist
+  if (!user) {
     redirect("/sign-in");
   }
 
-  // Check if user exists in local PostgreSQL db
-  const user = await db.user.findUnique({
-    where: { clerkId: userId },
-  });
-
-  // Redirect to onboarding if not created in PostgreSQL db yet
-  if (!user) {
+  // Redirect to onboarding if not created in PostgreSQL db yet (or lacks profile configuration)
+  if (!user.isOnboarded) {
     redirect("/onboarding");
   }
 

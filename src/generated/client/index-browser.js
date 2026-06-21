@@ -130,6 +130,7 @@ exports.Prisma.UserScalarFieldEnum = {
   bio: 'bio',
   status: 'status',
   theme: 'theme',
+  isOnboarded: 'isOnboarded',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -202,7 +203,9 @@ exports.Prisma.MeetingScalarFieldEnum = {
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   password: 'password',
-  requireApproval: 'requireApproval'
+  requireApproval: 'requireApproval',
+  conversationId: 'conversationId',
+  recipientId: 'recipientId'
 };
 
 exports.Prisma.MeetingParticipantScalarFieldEnum = {

@@ -26,3 +26,19 @@ export const db =
   });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+
+import { cache } from "react";
+import { auth } from "@clerk/nextjs/server";
+
+export const getSessionUser = cache(async () => {
+  try {
+    const { userId } = await auth();
+    if (!userId) return null;
+    return await db.user.findUnique({
+      where: { clerkId: userId },
+    });
+  } catch (err) {
+    console.error("Error in getSessionUser:", err);
+    return null;
+  }
+});

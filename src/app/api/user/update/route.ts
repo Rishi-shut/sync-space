@@ -21,6 +21,7 @@ export async function PATCH(req: Request) {
       data: {
         displayName,
         bio: bio || null,
+        isOnboarded: true,
       },
     });
 
