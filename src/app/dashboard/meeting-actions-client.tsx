@@ -106,25 +106,27 @@ export default function MeetingActionsClient() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {/* Start Instant Meeting */}
-      <div className="p-6 rounded-2xl border border-border bg-card/85 backdrop-blur-sm flex flex-col h-full group hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5 transition-all duration-300">
-        <div>
-          <h3 className="text-sm font-semibold text-text-primary mb-1">Instant Meeting</h3>
-          <p className="text-xs text-text-secondary mb-3">
-            Start an HD video conference with screensharing and direct link invitations.
-          </p>
+      <div className="p-6 rounded-2xl border border-border bg-card/50 backdrop-blur-md flex flex-col justify-between min-h-[260px] group hover:border-accent/40 hover:shadow-xl hover:shadow-accent/5 transition-all duration-300">
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-text-primary mb-1">Instant Meeting</h3>
+            <p className="text-xs text-text-secondary">
+              Start an HD video conference with screensharing and direct link invitations.
+            </p>
+          </div>
 
           <button
             type="button"
             onClick={() => setShowSettings(!showSettings)}
-            className="text-[10px] font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer mb-2"
+            className="text-[10px] font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer"
           >
             <span>{showSettings ? "Hide Security Options" : "Show Security Options"}</span>
           </button>
 
           {showSettings && (
-            <div className="p-3 rounded-xl border border-border bg-background/50 space-y-3 animate-fadeInUp">
+            <div className="p-3.5 rounded-xl border border-border bg-background/50 space-y-3 animate-fadeInUp">
               {/* Host Admission Approval Option */}
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-text-secondary">Require Host Approval</span>
@@ -137,7 +139,7 @@ export default function MeetingActionsClient() {
               </div>
 
               {/* Password Option */}
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-text-secondary">Password Protected</span>
                   <input
@@ -153,7 +155,7 @@ export default function MeetingActionsClient() {
                     placeholder="Enter meeting password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full input text-[10px] py-1 bg-background border-border text-text-primary"
+                    className="w-full input text-xs py-2 px-3 bg-background border-border text-text-primary focus:border-accent/50 outline-none rounded-xl"
                     required={requirePassword}
                   />
                 )}
@@ -162,7 +164,7 @@ export default function MeetingActionsClient() {
           )}
         </div>
 
-        <div className="mt-auto pt-4 space-y-2">
+        <div className="pt-4 space-y-2">
           {error && <p className="text-xs text-rose-500">{error}</p>}
           <button
             onClick={handleCreateMeeting}
@@ -182,30 +184,30 @@ export default function MeetingActionsClient() {
       {/* Schedule a Meeting */}
       <form
         onSubmit={handleScheduleMeeting}
-        className="p-6 rounded-2xl border border-border bg-card/85 backdrop-blur-sm flex flex-col h-full group hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5 transition-all duration-300"
+        className="p-6 rounded-2xl border border-border bg-card/50 backdrop-blur-md flex flex-col justify-between min-h-[260px] group hover:border-accent/40 hover:shadow-xl hover:shadow-accent/5 transition-all duration-300"
       >
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
             <h3 className="text-sm font-semibold text-text-primary mb-1">Schedule Meeting</h3>
-            <p className="text-xs text-text-secondary mb-2">
+            <p className="text-xs text-text-secondary">
               Plan a future video session and save it directly to your agenda.
             </p>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <input
               type="text"
               placeholder="Meeting Title"
               value={scheduleTitle}
               onChange={(e) => setScheduleTitle(e.target.value)}
-              className="w-full input text-xs py-1.5 bg-background border-border text-text-primary"
+              className="w-full input text-xs py-2 px-3 bg-background border-border text-text-primary rounded-xl focus:border-accent/50 outline-none"
               required
             />
             <input
               type="datetime-local"
               value={scheduledTime}
               onChange={(e) => setScheduledTime(e.target.value)}
-              className="w-full input text-xs py-1.5 bg-background border-border text-text-primary"
+              className="w-full input text-xs py-2 px-3 bg-background border-border text-text-primary rounded-xl focus:border-accent/50 outline-none"
               required
             />
           </div>
@@ -214,13 +216,13 @@ export default function MeetingActionsClient() {
             <button
               type="button"
               onClick={() => setShowScheduleSettings(!showScheduleSettings)}
-              className="text-[10px] font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer mb-2"
+              className="text-[10px] font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer"
             >
               <span>{showScheduleSettings ? "Hide Security Options" : "Show Security Options"}</span>
             </button>
 
             {showScheduleSettings && (
-              <div className="p-3 rounded-xl border border-border bg-background/50 space-y-3 animate-fadeInUp">
+              <div className="p-3.5 rounded-xl border border-border bg-background/50 space-y-3 animate-fadeInUp">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-text-secondary">Require Host Approval</span>
                   <input
@@ -231,7 +233,7 @@ export default function MeetingActionsClient() {
                   />
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-text-secondary">Password Protected</span>
                     <input
@@ -247,7 +249,7 @@ export default function MeetingActionsClient() {
                       placeholder="Enter meeting password"
                       value={schedulePassword}
                       onChange={(e) => setSchedulePassword(e.target.value)}
-                      className="w-full input text-[10px] py-1 bg-background border-border text-text-primary"
+                      className="w-full input text-xs py-2 px-3 bg-background border-border text-text-primary rounded-xl focus:border-accent/50 outline-none"
                       required={scheduleRequirePassword}
                     />
                   )}
@@ -257,7 +259,7 @@ export default function MeetingActionsClient() {
           </div>
         </div>
 
-        <div className="mt-auto pt-4 space-y-2">
+        <div className="pt-4 space-y-2">
           {scheduleError && <p className="text-xs text-rose-500">{scheduleError}</p>}
           {scheduleSuccess && <p className="text-xs text-emerald-500">{scheduleSuccess}</p>}
 
@@ -279,28 +281,28 @@ export default function MeetingActionsClient() {
       {/* Join with Code */}
       <form
         onSubmit={handleJoinMeeting}
-        className="p-6 rounded-2xl border border-border bg-card/85 backdrop-blur-sm flex flex-col h-full group hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5 transition-all duration-300"
+        className="p-6 rounded-2xl border border-border bg-card/50 backdrop-blur-md flex flex-col justify-between min-h-[260px] group hover:border-accent/40 hover:shadow-xl hover:shadow-accent/5 transition-all duration-300"
       >
-        <div>
+        <div className="space-y-3">
           <h3 className="text-sm font-semibold text-text-primary mb-1">Join with Code</h3>
-          <p className="text-xs text-text-secondary mb-3">
+          <p className="text-xs text-text-secondary">
             Enter a room invite code (e.g. abc-defg-hij) to jump right in.
           </p>
         </div>
 
-        <div className="mt-auto pt-4">
+        <div className="pt-4">
           <div className="flex gap-2">
             <input
               type="text"
               placeholder="Room code"
               value={roomCode}
               onChange={(e) => setRoomCode(e.target.value)}
-              className="flex-1 input text-xs py-2 bg-background border-border text-text-primary"
+              className="flex-1 input text-xs py-2.5 px-3 bg-background border-border text-text-primary rounded-xl focus:border-accent/50 outline-none"
               required
             />
             <button
               type="submit"
-              className="btn-primary px-4 py-2 text-xs font-semibold shadow-[0_4px_20px_rgba(124,58,237,0.15)]"
+              className="btn-primary px-4 py-2.5 text-xs font-semibold shadow-[0_4px_20px_rgba(124,58,237,0.15)]"
             >
               <ArrowRight className="w-4 h-4" />
             </button>
