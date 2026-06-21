@@ -234,39 +234,48 @@ export default function MeetingRoomClient({
 
   // ── Acquire local camera + mic ─────────────────────────────────────────────
   const startLocalMedia = async () => {
-    let videoStream: MediaStream | null = null;
-    let audioStream: MediaStream | null = null;
+    let combinedStream: MediaStream | null = null;
 
-    if (camActive) {
+    if (camActive || micActive) {
       try {
-        videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        // Combined call for single hardware permission trigger & warm-up (much faster)
+        combinedStream = await navigator.mediaDevices.getUserMedia({
+          video: camActive ? { facingMode: "user" } : false,
+          audio: micActive,
+        });
       } catch (err) {
-        console.warn("[Media] Video acquisition failed:", err);
-        setCamActive(false);
-      }
-    }
+        console.warn("[Media] Combined acquisition failed, retrying individually:", err);
+        let videoStream: MediaStream | null = null;
+        let audioStream: MediaStream | null = null;
 
-    if (micActive) {
-      try {
-        audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-      } catch (err) {
-        console.warn("[Media] Audio acquisition failed:", err);
-        setMicActive(false);
+        if (camActive) {
+          try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          } catch (e) {
+            console.warn("[Media] Video individual acquisition failed:", e);
+            setCamActive(false);
+          }
+        }
+        if (micActive) {
+          try {
+            audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+          } catch (e) {
+            console.warn("[Media] Audio individual acquisition failed:", e);
+            setMicActive(false);
+          }
+        }
+
+        combinedStream = new MediaStream();
+        if (videoStream) videoStream.getVideoTracks().forEach((t) => combinedStream?.addTrack(t));
+        if (audioStream) audioStream.getAudioTracks().forEach((t) => combinedStream?.addTrack(t));
       }
+    } else {
+      combinedStream = new MediaStream();
     }
 
     if (!isMountedRef.current) {
-      videoStream?.getTracks().forEach((t) => t.stop());
-      audioStream?.getTracks().forEach((t) => t.stop());
+      combinedStream?.getTracks().forEach((t) => t.stop());
       return;
-    }
-
-    const combinedStream = new MediaStream();
-    if (videoStream) {
-      videoStream.getVideoTracks().forEach((track) => combinedStream.addTrack(track));
-    }
-    if (audioStream) {
-      audioStream.getAudioTracks().forEach((track) => combinedStream.addTrack(track));
     }
 
     localStreamRef.current = combinedStream;
