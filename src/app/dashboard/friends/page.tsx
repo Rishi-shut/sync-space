@@ -1,19 +1,15 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
+import { getSessionUser } from "@/lib/db";
 import FriendsClient from "./friends-client";
 
 export default async function FriendsPage() {
-  const { userId } = await auth();
-  if (!userId) {
+  const user = await getSessionUser();
+
+  if (!user) {
     redirect("/sign-in");
   }
 
-  const user = await db.user.findUnique({
-    where: { clerkId: userId },
-  });
-
-  if (!user) {
+  if (!user.isOnboarded) {
     redirect("/onboarding");
   }
 

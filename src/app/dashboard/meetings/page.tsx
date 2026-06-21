@@ -1,6 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
+import { db, getSessionUser } from "@/lib/db";
 import { Clock, VideoOff, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import MeetingActionsClient from "../meeting-actions-client";
@@ -12,16 +11,13 @@ interface MeetingsPageProps {
 
 export default async function MeetingsPage({ searchParams }: MeetingsPageProps) {
   const { ended } = await searchParams;
-  const { userId } = await auth();
-  if (!userId) {
+  const user = await getSessionUser();
+
+  if (!user) {
     redirect("/sign-in");
   }
 
-  const user = await db.user.findUnique({
-    where: { clerkId: userId },
-  });
-
-  if (!user) {
+  if (!user.isOnboarded) {
     redirect("/onboarding");
   }
 

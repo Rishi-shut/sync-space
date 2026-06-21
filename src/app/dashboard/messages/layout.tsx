@@ -1,6 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
+import { getSessionUser } from "@/lib/db";
 import ConversationListClient from "./conversation-list-client";
 import ChatViewportClient from "./chat-viewport-client";
 
@@ -9,16 +8,13 @@ export default async function MessagesLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
-  if (!userId) {
+  const dbUser = await getSessionUser();
+
+  if (!dbUser) {
     redirect("/sign-in");
   }
 
-  const dbUser = await db.user.findUnique({
-    where: { clerkId: userId },
-  });
-
-  if (!dbUser) {
+  if (!dbUser.isOnboarded) {
     redirect("/onboarding");
   }
 

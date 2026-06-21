@@ -1,22 +1,18 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { db, getSessionUser } from "@/lib/db";
 import { Video, Clock, MessageSquare, Files, Bot, Sparkles, Calendar } from "lucide-react";
 import MeetingActionsClient from "./meeting-actions-client";
 import DeleteMeetingButton from "./delete-meeting-button";
 
 export default async function DashboardPage() {
-  const { userId } = await auth();
-  if (!userId) {
+  const user = await getSessionUser();
+
+  if (!user) {
     redirect("/sign-in");
   }
 
-  const user = await db.user.findUnique({
-    where: { clerkId: userId },
-  });
-
-  if (!user) {
+  if (!user.isOnboarded) {
     redirect("/onboarding");
   }
 

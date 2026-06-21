@@ -1,6 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
-import { db } from "@/lib/db";
+import { db, getSessionUser } from "@/lib/db";
 import MeetingRoomClient from "./meeting-room-client";
 
 interface MeetingPageProps {
@@ -8,16 +7,13 @@ interface MeetingPageProps {
 }
 
 export default async function MeetingPage({ params }: MeetingPageProps) {
-  const { userId } = await auth();
-  if (!userId) {
+  const user = await getSessionUser();
+
+  if (!user) {
     redirect("/sign-in");
   }
 
-  const user = await db.user.findUnique({
-    where: { clerkId: userId },
-  });
-
-  if (!user) {
+  if (!user.isOnboarded) {
     redirect("/onboarding");
   }
 

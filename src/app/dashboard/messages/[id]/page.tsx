@@ -1,6 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
-import { db } from "@/lib/db";
+import { db, getSessionUser } from "@/lib/db";
 import ChatWindowClient from "./chat-window-client";
 
 interface ConversationPageProps {
@@ -8,16 +7,13 @@ interface ConversationPageProps {
 }
 
 export default async function ConversationPage({ params }: ConversationPageProps) {
-  const { userId } = await auth();
-  if (!userId) {
+  const dbUser = await getSessionUser();
+
+  if (!dbUser) {
     redirect("/sign-in");
   }
 
-  const dbUser = await db.user.findUnique({
-    where: { clerkId: userId },
-  });
-
-  if (!dbUser) {
+  if (!dbUser.isOnboarded) {
     redirect("/onboarding");
   }
 
