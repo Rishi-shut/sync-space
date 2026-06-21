@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useUIStore } from "@/stores/ui-store";
 import {
   Mic,
   MicOff,
@@ -160,6 +161,7 @@ export default function MeetingRoomClient({
   initialParticipants,
 }: MeetingRoomClientProps) {
   const router = useRouter();
+  const { addToast } = useUIStore();
   const isPersonalCall = meeting.title.toLowerCase().includes("call with");
   const meetingTerm = meeting.type === "VOICE" || isPersonalCall ? "Call" : "Meeting";
 
@@ -733,6 +735,10 @@ export default function MeetingRoomClient({
         console.error("Failed to update flags on DB:", err);
       }
     } else {
+      if (typeof navigator === "undefined" || !navigator.mediaDevices || !(navigator.mediaDevices as any).getDisplayMedia) {
+        addToast("Screen sharing is not supported on mobile devices. Please join on a computer to share your screen.", "error", 5000);
+        return;
+      }
       try {
         const s = await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: false });
         if (!isMountedRef.current) { s.getTracks().forEach((t: MediaStreamTrack) => t.stop()); return; }
