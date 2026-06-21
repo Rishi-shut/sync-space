@@ -1,6 +1,10 @@
 import { redirect, notFound } from "next/navigation";
 import { db, getSessionUser } from "@/lib/db";
-import MeetingRoomClient from "./meeting-room-client";
+import dynamic from "next/dynamic";
+
+const MeetingRoomClient = dynamic(() => import("./meeting-room-client"), {
+  ssr: false,
+});
 
 interface MeetingPageProps {
   params: Promise<{ code: string }>;

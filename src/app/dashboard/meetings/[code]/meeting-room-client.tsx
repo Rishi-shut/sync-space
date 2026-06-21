@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useUIStore } from "@/stores/ui-store";
+import Peer from "peerjs";
 import {
   Mic,
   MicOff,
@@ -373,7 +374,6 @@ export default function MeetingRoomClient({
       if (initTimeout) clearTimeout(initTimeout);
       if (retryTimeout) clearTimeout(retryTimeout);
 
-      const { Peer } = await import("peerjs");
       const myPeerId = makePeerId(user.id, meeting.code);
       console.log("[PeerJS] Initializing as:", myPeerId);
 
