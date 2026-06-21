@@ -33,7 +33,9 @@ export async function POST(req: Request) {
       type = "VIDEO", 
       password = null, 
       requireApproval = false,
-      scheduledAt = null
+      scheduledAt = null,
+      conversationId = null,
+      recipientId = null
     } = body;
 
     const code = generateRoomCode();
@@ -49,6 +51,8 @@ export async function POST(req: Request) {
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
         password: password ? password : null,
         requireApproval: !!requireApproval,
+        conversationId,
+        recipientId,
       },
     });
 
@@ -59,8 +63,31 @@ export async function POST(req: Request) {
           meetingId: meeting.id,
           userId: dbUser.id,
           role: "HOST",
+          isApproved: true,
         },
       });
+
+      // For direct calling, pre-approve the recipient so they bypass waiting room / passwords
+      if (recipientId) {
+        await db.meetingParticipant.upsert({
+          where: {
+            meetingId_userId: {
+              meetingId: meeting.id,
+              userId: recipientId,
+            },
+          },
+          update: {
+            leftAt: null,
+            isApproved: true,
+          },
+          create: {
+            meetingId: meeting.id,
+            userId: recipientId,
+            role: "PARTICIPANT",
+            isApproved: true,
+          },
+        });
+      }
     }
 
     return NextResponse.json(meeting);
@@ -253,12 +280,20 @@ export async function GET(req: Request) {
         f.senderId === dbUser.id ? f.receiverId : f.senderId
       );
 
-      const activeVoiceCalls = await db.meeting.findMany({
+      const activeCalls = await db.meeting.findMany({
         where: {
           status: "ACTIVE",
-          type: "VOICE",
-          createdById: { in: friendIds },
           createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
+          OR: [
+            // Direct call to this user (can be video or voice)
+            { recipientId: dbUser.id },
+            // Public voice call created by a friend
+            {
+              recipientId: null,
+              type: "VOICE",
+              createdById: { in: friendIds },
+            }
+          ]
         },
         include: {
           createdBy: {
@@ -271,7 +306,7 @@ export async function GET(req: Request) {
         },
       });
 
-      return NextResponse.json(activeVoiceCalls);
+      return NextResponse.json(activeCalls);
     }
 
     const meeting = await db.meeting.findUnique({

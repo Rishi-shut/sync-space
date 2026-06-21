@@ -383,7 +383,7 @@ export default function Navbar({ user }: NavbarProps) {
 
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-white uppercase tracking-wider animate-pulse">
-              Incoming Voice Call
+              Incoming {incomingCall.type === "VOICE" ? "Voice" : "Video"} Call
             </p>
             <p className="text-sm font-semibold text-text-primary truncate">
               {incomingCall.createdBy.displayName || "Friend"}

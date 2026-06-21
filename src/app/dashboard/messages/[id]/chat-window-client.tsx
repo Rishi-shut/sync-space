@@ -112,30 +112,22 @@ export default function ChatWindowClient({
     if (!partner) return;
     setIsCalling(true);
     try {
-      // 1. Create Instant Meeting
+      // 1. Create Direct Video Call Meeting
       const meetingRes = await fetch("/api/meetings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: `Call with ${displayName}` }),
+        body: JSON.stringify({ 
+          title: `Call with ${displayName}`,
+          type: "VIDEO",
+          conversationId: conversation.id,
+          recipientId: partner.id
+        }),
       });
 
-      if (!meetingRes.ok) throw new Error("Could not initialize meeting room");
+      if (!meetingRes.ok) throw new Error("Could not initialize video call");
       const meeting = await meetingRes.json();
 
-      // 2. Post Invitation Link to DM
-      const inviteMsg = `I've started a video call! Click the button below to join the room.\n\n[Join Active Call](/dashboard/meetings/${meeting.code})`;
-      const res = await fetch(`/api/conversations/${conversation.id}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: inviteMsg, type: "TEXT" }),
-      });
-
-      if (res.ok) {
-        const newMsg = await res.json();
-        setMessages((prev) => [...prev, newMsg]);
-      }
-
-      // 3. Redirect host into the meeting room
+      // 2. Redirect host directly into the call room
       router.push(`/dashboard/meetings/${meeting.code}`);
     } catch (err: any) {
       alert(err.message || "Failed to start call");
@@ -148,20 +140,22 @@ export default function ChatWindowClient({
     if (!partner) return;
     setIsCalling(true);
     try {
-      // 1. Create Instant Meeting
+      // 1. Create Direct Voice Call Meeting
       const meetingRes = await fetch("/api/meetings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           title: `Voice Call with ${displayName}`,
-          type: "VOICE"
+          type: "VOICE",
+          conversationId: conversation.id,
+          recipientId: partner.id
         }),
       });
 
-      if (!meetingRes.ok) throw new Error("Could not initialize voice room");
+      if (!meetingRes.ok) throw new Error("Could not initialize voice call");
       const meeting = await meetingRes.json();
 
-      // 2. Redirect host into the meeting room
+      // 2. Redirect host directly into the call room
       router.push(`/dashboard/meetings/${meeting.code}`);
     } catch (err: any) {
       alert(err.message || "Failed to start voice call");
