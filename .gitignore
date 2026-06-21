@@ -56,3 +56,6 @@ coverage/
 /src/generated/prisma
 
 /public/uploads
+
+# Documentation
+/docs/
