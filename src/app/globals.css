@@ -1,7 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap");
 @import "tailwindcss";
 @source "../**/*.{ts,tsx}";
-
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
 /* ============================================================
@@ -38,55 +37,54 @@
 :root {
   color-scheme: dark;
 
-  /* Cyber Emerald Theme (Futuristic, vibrant, high-tech) */
-  --background: #020205;             /* Deepest space void */
-  --background-secondary: #05070c;   /* Tech slate shadow */
-  --foreground: #f0faf6;             /* Cool minty off-white */
+  --background: #0b0d12;
+  --background-secondary: #111319;
+  --foreground: #f5f6f8;
 
   /* Cards */
-  --card: #080c18;                   /* Glass tech card background */
-  --card-hover: #0f1428;             /* Elevated tech card hover */
+  --card: #14171e;
+  --card-hover: #191d26;
 
   /* Borders */
-  --border-color: #141f38;           /* Cyan-tinted borders */
-  --border-subtle: #0b1122;
+  --border-color: #252a35;
+  --border-subtle: #1a1e27;
 
   /* Accent — Cyber Emerald / Mint Green */
-  --accent: #10b981;                 /* Emerald 500 */
-  --accent-hover: #059669;           /* Emerald 600 */
-  --accent-glow: rgba(16, 185, 129, 0.22);
-  --accent-subtle: rgba(16, 185, 129, 0.05);
+  --accent: #a75a48;
+  --accent-hover: #bd6b57;
+  --accent-glow: rgba(167, 90, 72, 0.14);
+  --accent-subtle: rgba(167, 90, 72, 0.08);
 
-  --cyan: #06b6d4;
-  --cyan-glow: rgba(6, 182, 212, 0.08);
-  --violet: #8b5cf6;
+  --cyan: #789284;
+  --cyan-glow: rgba(120, 146, 132, 0.08);
+  --violet: #8a756e;
 
   /* Semantic */
-  --success: #10b981;
-  --success-glow: rgba(16, 185, 129, 0.08);
+  --success: #6e927e;
+  --success-glow: rgba(110, 146, 126, 0.08);
   --warning: #f59e0b;
   --destructive: #f43f5e;
 
   /* Text colors */
-  --text-primary: #f0faf6;
-  --text-secondary: #8ca6a5;         /* Cool mint-grey text */
-  --text-muted: #4a5d5c;             /* Muted tech slate */
+  --text-primary: #f5f6f8;
+  --text-secondary: #9ca2b1;
+  --text-muted: #626978;
 
   /* Glass */
-  --glass-bg: rgba(2, 2, 5, 0.85);
-  --glass-border: rgba(16, 185, 129, 0.08);
-  --glass-hover: rgba(16, 185, 129, 0.03);
+  --glass-bg: rgba(11, 13, 18, 0.84);
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --glass-hover: rgba(255, 255, 255, 0.035);
 
   /* Sidebar */
-  --sidebar-bg: #030408;
-  --sidebar-hover: rgba(16, 185, 129, 0.06);
-  --sidebar-active: rgba(16, 185, 129, 0.12);
+  --sidebar-bg: #0d0f14;
+  --sidebar-hover: rgba(255, 255, 255, 0.045);
+  --sidebar-active: rgba(167, 90, 72, 0.14);
 
   /* Gradients */
-  --gradient-accent: linear-gradient(135deg, #10b981 0%, #06b6d4 100%); /* Emerald to Cyan! */
-  --gradient-hero: linear-gradient(160deg, #020205 0%, #031c1a 50%, #020205 100%);
-  --gradient-card: linear-gradient(145deg, #080c18 0%, #0d162c 100%);
-  --gradient-surface: linear-gradient(145deg, #080c18 0%, #0e1936 100%);
+  --gradient-accent: linear-gradient(135deg, #99513f 0%, #b86853 100%);
+  --gradient-hero: linear-gradient(160deg, #0b0d12 0%, #171412 50%, #0b0d12 100%);
+  --gradient-card: linear-gradient(145deg, #14171e 0%, #171a23 100%);
+  --gradient-surface: linear-gradient(145deg, #14171e 0%, #1a1e29 100%);
 }
 
 /* ─── Light Color Scheme ────────────────────────────────────── */
@@ -94,54 +92,54 @@
   color-scheme: light;
 
   /* Ocean Breeze Theme (Cool teal & soft cyan) */
-  --background: #f3fafd;             /* Soft light aqua breeze */
-  --background-secondary: #e5f4f8;   /* Light teal-tinted secondary */
-  --foreground: #0f172a;             /* Slate 900 */
+  --background: #f4f1e9;
+  --background-secondary: #ebe7dd;
+  --foreground: #202421;
 
   /* Cards */
   --card: #ffffff;
-  --card-hover: #f7fcfe;
+  --card-hover: #eeeae1;
 
   /* Borders */
-  --border-color: #cfe3ec;           /* Soft aqua border */
-  --border-subtle: #e6f0f5;
+  --border-color: #d0cabf;
+  --border-subtle: #e0dbd1;
 
   /* Accent — Ocean Sky Blue */
-  --accent: #0284c7;                 /* Sky 600 */
-  --accent-hover: #0369a1;           /* Sky 700 */
-  --accent-glow: rgba(2, 132, 199, 0.15);
-  --accent-subtle: rgba(2, 132, 199, 0.04);
+  --accent: #9b4f3e;
+  --accent-hover: #824132;
+  --accent-glow: rgba(155, 79, 62, 0.12);
+  --accent-subtle: rgba(155, 79, 62, 0.05);
 
-  --cyan: #0891b2;
-  --cyan-glow: rgba(8, 145, 178, 0.05);
-  --violet: #7c3aed;
+  --cyan: #71877b;
+  --cyan-glow: rgba(113, 135, 123, 0.05);
+  --violet: #806f69;
 
   /* Semantic */
-  --success: #10b981;
-  --success-glow: rgba(16, 185, 129, 0.05);
+  --success: #627f6d;
+  --success-glow: rgba(98, 127, 109, 0.05);
   --warning: #d97706;
   --destructive: #ef4444;
 
   /* Text colors */
-  --text-primary: #0f172a;
-  --text-secondary: #475569;         /* Slate 600 */
-  --text-muted: #94a3b8;             /* Slate 400 */
+  --text-primary: #202421;
+  --text-secondary: #5f625b;
+  --text-muted: #89887f;
 
   /* Glass */
   --glass-bg: rgba(255, 255, 255, 0.88);
-  --glass-border: rgba(2, 132, 199, 0.08);
-  --glass-hover: rgba(2, 132, 199, 0.02);
+  --glass-border: rgba(32, 36, 33, 0.08);
+  --glass-hover: rgba(32, 36, 33, 0.03);
 
   /* Sidebar */
-  --sidebar-bg: #eef8fc;             /* Very soft sky sidebar */
-  --sidebar-hover: rgba(2, 132, 199, 0.05);
-  --sidebar-active: rgba(2, 132, 199, 0.1);
+  --sidebar-bg: #ede9e0;
+  --sidebar-hover: rgba(32, 36, 33, 0.05);
+  --sidebar-active: rgba(155, 79, 62, 0.1);
 
   /* Gradients */
-  --gradient-accent: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
-  --gradient-hero: linear-gradient(160deg, #f3fafd 0%, #e0f2fe 100%);
-  --gradient-card: linear-gradient(145deg, #ffffff 0%, #f7fcfe 100%);
-  --gradient-surface: linear-gradient(145deg, #ffffff 0%, #f7fcfe 100%);
+  --gradient-accent: linear-gradient(135deg, #8e4738 0%, #aa5a47 100%);
+  --gradient-hero: linear-gradient(160deg, #f4f1e9 0%, #ebe7dd 100%);
+  --gradient-card: linear-gradient(145deg, #ffffff 0%, #f3efe7 100%);
+  --gradient-surface: linear-gradient(145deg, #ffffff 0%, #f3efe7 100%);
 }
 
 /* ─── Reset ──────────────────────────────────────────────────── */

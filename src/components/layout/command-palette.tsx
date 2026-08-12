@@ -17,7 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function CommandPalette() {
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
+  const { setTheme } = useTheme();
   const { commandPaletteOpen, setCommandPaletteOpen } = useUIStore();
   const [query, setQuery] = useState("");
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useUIStore } from "@/stores/ui-store";
-import Peer from "peerjs";
+import Peer, { MediaConnection } from "peerjs";
 import {
   Mic,
   MicOff,
@@ -21,7 +21,7 @@ import {
 
 // ─── Interfaces ────────────────────────────────────────────────────────────────
 
-interface UserInfo {
+export interface UserInfo {
   id: string;
   displayName: string | null;
   imageUrl: string | null;
@@ -34,7 +34,7 @@ interface ParticipantDetail extends UserInfo {
   isCameraOff?: boolean;
 }
 
-interface MeetingInfo {
+export interface MeetingInfo {
   id: string;
   title: string;
   code: string;
@@ -43,6 +43,7 @@ interface MeetingInfo {
   createdBy: { displayName: string | null };
   hasPassword?: boolean;
   requireApproval?: boolean;
+  recipientId?: string | null;
 }
 
 interface RemotePeer {
@@ -52,7 +53,7 @@ interface RemotePeer {
   stream: MediaStream | null;
 }
 
-interface MeetingRoomClientProps {
+export interface MeetingRoomClientProps {
   user: UserInfo;
   meeting: MeetingInfo;
   initialParticipants: UserInfo[];
@@ -70,6 +71,45 @@ function makePeerId(userId: string, meetingCode: string): string {
 function extractUserIdFromPeerId(peerId: string, meetingCode: string): string {
   const prefix = `ss_${meetingCode.replace(/[^a-zA-Z0-9_-]/g, "_")}_`;
   return peerId.startsWith(prefix) ? peerId.slice(prefix.length) : peerId;
+}
+
+interface MeetingParticipantRecord {
+  id: string;
+  userId: string;
+  isApproved: boolean;
+  isScreenSharing: boolean;
+  isMuted: boolean;
+  isCameraOff: boolean;
+  user: UserInfo;
+}
+
+function getIceServers(): RTCIceServer[] {
+  const servers: RTCIceServer[] = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+  ];
+
+  const turnUrls = process.env.NEXT_PUBLIC_TURN_URLS
+    ?.split(",")
+    .map((url) => url.trim())
+    .filter(Boolean);
+
+  if (turnUrls?.length) {
+    servers.push({
+      urls: turnUrls,
+      username: process.env.NEXT_PUBLIC_TURN_USERNAME,
+      credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL,
+    });
+  }
+
+  return servers;
+}
+
+function preferredDevice(kind: "audio" | "video"): MediaTrackConstraints | true {
+  const key = kind === "audio" ? "preferred_mic_id" : "preferred_cam_id";
+  const deviceId = window.localStorage.getItem(key);
+  return deviceId ? { deviceId: { ideal: deviceId } } : true;
 }
 
 // ─── RemoteVideo — MUST be defined outside the parent component ─────────────────
@@ -118,6 +158,22 @@ function RemoteVideo({ peer }: RemoteVideoProps) {
   );
 }
 
+function RemoteAudio({ peer }: RemoteVideoProps) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !peer.stream) return;
+    audio.srcObject = peer.stream;
+    const play = () => void audio.play().catch(() => undefined);
+    play();
+    peer.stream.addEventListener("addtrack", play);
+    return () => peer.stream?.removeEventListener("addtrack", play);
+  }, [peer.stream]);
+
+  return <audio ref={audioRef} autoPlay playsInline />;
+}
+
 function RemoteVideoForShare({ peer }: RemoteVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -163,7 +219,7 @@ export default function MeetingRoomClient({
 }: MeetingRoomClientProps) {
   const router = useRouter();
   const { addToast } = useUIStore();
-  const isPersonalCall = meeting.title.toLowerCase().includes("call with");
+  const isPersonalCall = Boolean(meeting.recipientId);
   const meetingTerm = meeting.type === "VOICE" || isPersonalCall ? "Call" : "Meeting";
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -177,13 +233,14 @@ export default function MeetingRoomClient({
   const [activeParticipants, setActiveParticipants] = useState<ParticipantDetail[]>(initialParticipants);
   const [remotePeers, setRemotePeers] = useState<Record<string, RemotePeer>>({});
   const [peerReady, setPeerReady] = useState(false);
+  const [mediaReady, setMediaReady] = useState(false);
   const isHost = meeting.createdById === user.id;
   const [password, setPassword] = useState("");
   const [passwordVerified, setPasswordVerified] = useState(!meeting.hasPassword || isHost);
   const [passwordError, setPasswordError] = useState("");
   const [isApprovedByHost, setIsApprovedByHost] = useState(!meeting.requireApproval || isHost);
   const [wasDenied, setWasDenied] = useState(false);
-  const [pendingParticipants, setPendingParticipants] = useState<any[]>([]);
+  const [pendingParticipants, setPendingParticipants] = useState<MeetingParticipantRecord[]>([]);
   const [showEndModal, setShowEndModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
 
@@ -197,13 +254,16 @@ export default function MeetingRoomClient({
   const screenVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
+  const audioTrackRef = useRef<MediaStreamTrack | null>(null);
+  const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
   const isMountedRef = useRef(true);
-  const peerRef = useRef<any>(null);
-  const connectionsRef = useRef<Record<string, any>>({});
+  const peerRef = useRef<Peer | null>(null);
+  const connectionsRef = useRef<Record<string, MediaConnection>>({});
   // Always-current participants list to avoid stale closures inside PeerJS callbacks
   const participantsRef = useRef<ParticipantDetail[]>(initialParticipants);
   const callTimeoutsRef = useRef<Record<string, number>>({});
   const remotePeersRef = useRef<Record<string, RemotePeer>>({});
+  const directJoinRegisteredRef = useRef(false);
 
   // ── Remote peer state helpers ──────────────────────────────────────────────
   const upsertRemotePeer = useCallback((userId: string, update: Partial<RemotePeer>) => {
@@ -232,6 +292,18 @@ export default function MeetingRoomClient({
     remotePeersRef.current = remotePeers;
   }, [remotePeers]);
 
+  const buildOutgoingStream = useCallback(() => {
+    const stream = new MediaStream();
+    const audioTrack = audioTrackRef.current;
+    const videoTrack = screenSharingRef.current
+      ? screenStreamRef.current?.getVideoTracks()[0]
+      : cameraTrackRef.current;
+
+    if (audioTrack?.readyState === "live") stream.addTrack(audioTrack);
+    if (videoTrack?.readyState === "live") stream.addTrack(videoTrack);
+    return stream;
+  }, []);
+
   // ── Acquire local camera + mic ─────────────────────────────────────────────
   const startLocalMedia = async () => {
     let combinedStream: MediaStream | null = null;
@@ -240,8 +312,8 @@ export default function MeetingRoomClient({
       try {
         // Combined call for single hardware permission trigger & warm-up (much faster)
         combinedStream = await navigator.mediaDevices.getUserMedia({
-          video: camActive ? { facingMode: "user" } : false,
-          audio: micActive,
+          video: camActive ? preferredDevice("video") : false,
+          audio: micActive ? preferredDevice("audio") : false,
         });
       } catch (err) {
         console.warn("[Media] Combined acquisition failed, retrying individually:", err);
@@ -250,7 +322,7 @@ export default function MeetingRoomClient({
 
         if (camActive) {
           try {
-            videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: preferredDevice("video"), audio: false });
           } catch (e) {
             console.warn("[Media] Video individual acquisition failed:", e);
             setCamActive(false);
@@ -258,7 +330,7 @@ export default function MeetingRoomClient({
         }
         if (micActive) {
           try {
-            audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+            audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: preferredDevice("audio") });
           } catch (e) {
             console.warn("[Media] Audio individual acquisition failed:", e);
             setMicActive(false);
@@ -279,28 +351,22 @@ export default function MeetingRoomClient({
     }
 
     localStreamRef.current = combinedStream;
+    audioTrackRef.current = combinedStream?.getAudioTracks()[0] ?? null;
+    cameraTrackRef.current = combinedStream?.getVideoTracks()[0] ?? null;
+    if (micActive && !audioTrackRef.current) {
+      addToast("Microphone access is unavailable. You can still join muted.", "error", 5000);
+    }
+    if (camActive && !cameraTrackRef.current) {
+      addToast("Camera access is unavailable. You can still join without video.", "error", 5000);
+    }
     setLocalStream(combinedStream);
     if (localVideoRef.current) localVideoRef.current.srcObject = combinedStream;
+    setMediaReady(true);
   };
 
   // ── Mount/unmount lifecycle ────────────────────────────────────────────────
   useEffect(() => {
     isMountedRef.current = true;
-    startLocalMedia();
-
-    // Reset leftAt status in PostgreSQL DB on mount to clear any strict-mode unmount beacons
-    const markAsJoined = async () => {
-      try {
-        await fetch("/api/meetings", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: meeting.code, status: "JOINED" }),
-        });
-      } catch (err) {
-        console.error("[Meeting] Failed to reset JOINED status on mount:", err);
-      }
-    };
-    markAsJoined();
 
     const handleUnload = () =>
       navigator.sendBeacon("/api/meetings/leave", JSON.stringify({ code: meeting.code }));
@@ -337,7 +403,7 @@ export default function MeetingRoomClient({
   // ── Call a participant via PeerJS ──────────────────────────────────────────
   const callParticipant = useCallback((p: UserInfo) => {
     const peer = peerRef.current;
-    if (!localStreamRef.current || !peer) return;
+    if (!mediaReady || !peer || connectionsRef.current[p.id]) return;
     const targetId = makePeerId(p.id, meeting.code);
     console.log("[PeerJS] Calling →", targetId);
 
@@ -346,15 +412,7 @@ export default function MeetingRoomClient({
 
     // Dynamically construct the stream to pass:
     // It should include the audio track and either the screen sharing track or camera track.
-    const streamToPass = new MediaStream();
-    localStreamRef.current.getAudioTracks().forEach((t) => streamToPass.addTrack(t));
-    if (screenSharingRef.current && screenStreamRef.current) {
-      screenStreamRef.current.getVideoTracks().forEach((t) => streamToPass.addTrack(t));
-    } else {
-      localStreamRef.current.getVideoTracks().forEach((t) => streamToPass.addTrack(t));
-    }
-
-    const call = peer.call(targetId, streamToPass);
+    const call = peer.call(targetId, buildOutgoingStream());
     if (!call) return;
     connectionsRef.current[p.id] = call;
 
@@ -362,22 +420,23 @@ export default function MeetingRoomClient({
 
     call.on("stream", (remoteStream: MediaStream) => {
       if (!isMountedRef.current) return;
+      delete callTimeoutsRef.current[p.id];
       upsertRemotePeer(p.id, { stream: remoteStream });
     });
     call.on("close", () => removeRemotePeer(p.id));
-    call.on("error", (err: any) => {
+    call.on("error", (err) => {
       console.error("[PeerJS] Outgoing call error:", err);
       removeRemotePeer(p.id);
     });
-  }, [meeting.code, upsertRemotePeer, removeRemotePeer]);
+  }, [buildOutgoingStream, mediaReady, meeting.code, upsertRemotePeer, removeRemotePeer]);
 
   // ── PeerJS — initialize once when the user actually joins ──────────────────
   useEffect(() => {
-    if (!joined || !isApprovedByHost) return;
+    if (!joined || !isApprovedByHost || !mediaReady) return;
 
-    let peer: any;
-    let initTimeout: any = null;
-    let retryTimeout: any = null;
+    let peer: Peer | null = null;
+    let initTimeout: ReturnType<typeof setTimeout> | null = null;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const initPeer = async () => {
       if (initTimeout) clearTimeout(initTimeout);
@@ -388,11 +447,7 @@ export default function MeetingRoomClient({
 
       peer = new Peer(myPeerId, {
         config: {
-          iceServers: [
-            { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:stun1.l.google.com:19302" },
-            { urls: "stun:stun2.l.google.com:19302" },
-          ],
+          iceServers: getIceServers(),
         },
       });
 
@@ -422,19 +477,14 @@ export default function MeetingRoomClient({
       });
 
       // Answer incoming calls
-      peer.on("call", (call: any) => {
-        if (!isMountedRef.current || !localStreamRef.current) return;
-        console.log("[PeerJS] Incoming call from:", call.peer);
-        
-        const streamToPass = new MediaStream();
-        localStreamRef.current.getAudioTracks().forEach((t) => streamToPass.addTrack(t));
-        if (screenSharingRef.current && screenStreamRef.current) {
-          screenStreamRef.current.getVideoTracks().forEach((t) => streamToPass.addTrack(t));
-        } else {
-          localStreamRef.current.getVideoTracks().forEach((t) => streamToPass.addTrack(t));
+      peer.on("call", (call: MediaConnection) => {
+        if (!isMountedRef.current || !mediaReady) {
+          call.close();
+          return;
         }
+        console.log("[PeerJS] Incoming call from:", call.peer);
 
-        call.answer(streamToPass);
+        call.answer(buildOutgoingStream());
 
         const remoteUserId = extractUserIdFromPeerId(call.peer, meeting.code);
         connectionsRef.current[remoteUserId] = call;
@@ -456,13 +506,17 @@ export default function MeetingRoomClient({
           upsertRemotePeer(remoteUserId, { stream: remoteStream });
         });
         call.on("close", () => removeRemotePeer(remoteUserId));
-        call.on("error", (err: any) => {
+        call.on("error", (err) => {
           console.error("[PeerJS] Incoming call error:", err);
           removeRemotePeer(remoteUserId);
         });
       });
 
-      peer.on("error", (err: any) => {
+      peer.on("disconnected", () => {
+        if (isMountedRef.current && !peer?.destroyed) peer?.reconnect();
+      });
+
+      peer.on("error", (err) => {
         if (err.type === "unavailable-id") {
           console.warn("[PeerJS] ID is taken/unavailable. Scheduling retry in 1.5s...");
           peer?.destroy();
@@ -483,7 +537,7 @@ export default function MeetingRoomClient({
     // Delay PeerJS setup by 800ms to allow server-side cleanup from unmounts
     initTimeout = setTimeout(() => {
       initPeer();
-    }, 800);
+    }, 200);
 
     return () => {
       if (initTimeout) clearTimeout(initTimeout);
@@ -494,8 +548,7 @@ export default function MeetingRoomClient({
       setPeerReady(false);
       setRemotePeers({});
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [joined, isApprovedByHost, callParticipant]);
+  }, [joined, isApprovedByHost, mediaReady, buildOutgoingStream, callParticipant, meeting.code, user.id, upsertRemotePeer, removeRemotePeer]);
 
   // ── Poll meeting state + handle new participants ───────────────────────────
   useEffect(() => {
@@ -513,7 +566,7 @@ export default function MeetingRoomClient({
         if (!res.ok) return;
         const data = await res.json();
 
-        if (data.status === "ENDED") {
+        if (data.status === "ENDED" || data.status === "CANCELLED") {
           localStreamRef.current?.getTracks().forEach((t) => t.stop());
           screenStreamRef.current?.getTracks().forEach((t) => t.stop());
           window.location.href = "/dashboard/meetings?ended=true";
@@ -538,18 +591,18 @@ export default function MeetingRoomClient({
           }
         } else {
           // Host tracks pending requests
-          const pending = rawParticipants.filter((p: any) => !p.isApproved);
+          const pending = rawParticipants.filter((participant: MeetingParticipantRecord) => !participant.isApproved);
           setPendingParticipants(pending);
         }
 
         // Active list contains approved participants with flags
         const list: ParticipantDetail[] = rawParticipants
-          .filter((p: any) => p.isApproved)
-          .map((p: any) => ({
-            ...p.user,
-            isScreenSharing: p.isScreenSharing,
-            isMuted: p.isMuted,
-            isCameraOff: p.isCameraOff,
+          .filter((participant: MeetingParticipantRecord) => participant.isApproved)
+          .map((participant: MeetingParticipantRecord) => ({
+            ...participant.user,
+            isScreenSharing: participant.isScreenSharing,
+            isMuted: participant.isMuted,
+            isCameraOff: participant.isCameraOff,
           }));
         
         setActiveParticipants(list);
@@ -569,8 +622,8 @@ export default function MeetingRoomClient({
                 if (!remotePeer || !remotePeer.stream) {
                   // No stream yet. Check if the call has timed out.
                   const callTime = callTimeoutsRef.current[p.id] || 0;
-                  if (Date.now() - callTime > 3000) {
-                    console.log(`[PeerJS] Call to ${p.displayName || p.id} timed out (3s) without stream. Retrying...`);
+                  if (Date.now() - callTime > 10_000) {
+                    console.log(`[PeerJS] Call to ${p.displayName || p.id} timed out without media. Retrying...`);
                     try {
                       conn.close();
                     } catch (e) {
@@ -602,54 +655,78 @@ export default function MeetingRoomClient({
 
   // ── Toggle helpers ─────────────────────────────────────────────────────────
 
-  /**
-   * Rebuild the local MediaStream from individual audio/video tracks.
-   * Also replaces tracks in all active PeerJS connections so remote peers
-   * see the updated stream immediately.
-   */
-  /**
-   * Rebuild the local MediaStream from individual audio/video tracks.
-   * Also replaces tracks in all active PeerJS connections so remote peers
-   * see the updated stream immediately.
-   */
-  const applyStreamUpdate = useCallback((audioTrack: MediaStreamTrack | null, videoTrack: MediaStreamTrack | null) => {
+  const syncOutgoingTracks = useCallback(() => {
+    const audioTrack = audioTrackRef.current?.readyState === "live"
+      ? audioTrackRef.current
+      : null;
+    const videoTrack = screenSharingRef.current
+      ? (screenStreamRef.current?.getVideoTracks()[0] ?? null)
+      : cameraTrackRef.current?.readyState === "live"
+        ? cameraTrackRef.current
+        : null;
+
+    Object.values(connectionsRef.current).forEach((call) => {
+      const peerConnection = call.peerConnection;
+      if (!peerConnection) return;
+
+      peerConnection.getTransceivers().forEach(({ sender, receiver }) => {
+        const kind = sender.track?.kind ?? receiver.track?.kind;
+        if (kind === "audio") void sender.replaceTrack(audioTrack);
+        if (kind === "video") void sender.replaceTrack(videoTrack);
+      });
+    });
+  }, []);
+
+  // Ask for media only after any password gate is complete. Visiting a room URL
+  // must not request hardware access or mark somebody as present.
+  useEffect(() => {
+    if (!passwordVerified || mediaReady) return;
+    queueMicrotask(() => void startLocalMedia());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [passwordVerified, mediaReady]);
+
+  // Direct-call participants enter immediately; standard rooms use the Join
+  // action in the lobby below.
+  useEffect(() => {
+    if (!isPersonalCall || !joined || !passwordVerified || !mediaReady || directJoinRegisteredRef.current) return;
+    directJoinRegisteredRef.current = true;
+    const markDirectCallJoined = async () => {
+      try {
+        const response = await fetch("/api/meetings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: meeting.code,
+            status: "JOINED",
+            password,
+            isMuted: !micActive,
+            isCameraOff: !camActive,
+          }),
+        });
+        if (!response.ok) throw new Error(await response.text());
+      } catch (error) {
+        directJoinRegisteredRef.current = false;
+        addToast(error instanceof Error ? error.message : "Could not join the call", "error");
+      }
+    };
+    void markDirectCallJoined();
+  }, [addToast, camActive, isPersonalCall, joined, mediaReady, meeting.code, micActive, password, passwordVerified]);
+
+  /** Keep the preview stream separate from the screen-share stream. */
+  const applyStreamUpdate = useCallback((audioTrack: MediaStreamTrack | null, cameraTrack: MediaStreamTrack | null) => {
+    audioTrackRef.current = audioTrack?.readyState === "live" ? audioTrack : null;
+    cameraTrackRef.current = cameraTrack?.readyState === "live" ? cameraTrack : null;
+
     const newStream = new MediaStream();
-    if (audioTrack) newStream.addTrack(audioTrack);
-    const cameraTrack = videoTrack || localStreamRef.current?.getVideoTracks()[0];
-    if (cameraTrack && camActive) newStream.addTrack(cameraTrack);
+    if (audioTrackRef.current) newStream.addTrack(audioTrackRef.current);
+    if (cameraTrackRef.current) newStream.addTrack(cameraTrackRef.current);
 
     localStreamRef.current = newStream;
     setLocalStream(newStream);
 
     if (localVideoRef.current) localVideoRef.current.srcObject = newStream;
-
-    // Replace tracks in existing peer connections so remote side updates live
-    Object.values(connectionsRef.current).forEach((call) => {
-      try {
-        const pc: RTCPeerConnection = call.peerConnection;
-        if (!pc) return;
-
-        // If screen sharing is active, send the screen share track. Otherwise, send camera/null.
-        const videoTrackToSend = screenSharingRef.current
-          ? (screenStreamRef.current?.getVideoTracks()[0] ?? null)
-          : videoTrack;
-
-        if (typeof pc.getTransceivers === "function") {
-          pc.getTransceivers().forEach((transceiver) => {
-            const sender = transceiver.sender;
-            const kind = transceiver.receiver.track?.kind || sender.track?.kind;
-            if (kind === "video") sender.replaceTrack(videoTrackToSend);
-            if (kind === "audio") sender.replaceTrack(audioTrack);
-          });
-        } else {
-          pc.getSenders().forEach((sender) => {
-            if (sender.track?.kind === "video") sender.replaceTrack(videoTrackToSend);
-            if (sender.track?.kind === "audio") sender.replaceTrack(audioTrack);
-          });
-        }
-      } catch (_) { /* ignore */ }
-    });
-  }, [camActive]);
+    syncOutgoingTracks();
+  }, [syncOutgoingTracks]);
 
   const toggleMic = async () => {
     const videoTrack = localStreamRef.current?.getVideoTracks()[0] ?? null;
@@ -665,10 +742,10 @@ export default function MeetingRoomClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code: meeting.code, status: "UPDATE_FLAGS", isMuted: true }),
         });
-      } catch (_) {}
+      } catch {}
     } else {
       try {
-        const s = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const s = await navigator.mediaDevices.getUserMedia({ audio: preferredDevice("audio"), video: false });
         if (!isMountedRef.current) { s.getTracks().forEach((t) => t.stop()); return; }
         setMicActive(true);
         applyStreamUpdate(s.getAudioTracks()[0], videoTrack);
@@ -678,7 +755,7 @@ export default function MeetingRoomClient({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ code: meeting.code, status: "UPDATE_FLAGS", isMuted: false }),
           });
-        } catch (_) {}
+        } catch {}
       } catch (err) {
         console.error("[Media] Failed to re-acquire mic:", err);
       }
@@ -699,11 +776,11 @@ export default function MeetingRoomClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code: meeting.code, status: "UPDATE_FLAGS", isCameraOff: true }),
         });
-      } catch (_) {}
+      } catch {}
     } else {
       try {
         // Only request video — audio track is already running (or null if mic is off)
-        const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        const s = await navigator.mediaDevices.getUserMedia({ video: preferredDevice("video"), audio: false });
         if (!isMountedRef.current) { s.getTracks().forEach((t) => t.stop()); return; }
         setCamActive(true);
         applyStreamUpdate(audioTrack, s.getVideoTracks()[0]);
@@ -713,7 +790,7 @@ export default function MeetingRoomClient({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ code: meeting.code, status: "UPDATE_FLAGS", isCameraOff: false }),
           });
-        } catch (_) {}
+        } catch {}
       } catch (err) {
         console.error("[Media] Failed to re-acquire camera:", err);
       }
@@ -727,11 +804,7 @@ export default function MeetingRoomClient({
       screenStreamRef.current = null;
       setScreenSharing(false);
       screenSharingRef.current = false;
-
-      // Restore camera video track in connections
-      const audioTrack = localStreamRef.current?.getAudioTracks()[0] ?? null;
-      const cameraVideoTrack = camActive ? (localStreamRef.current?.getVideoTracks()[0] ?? null) : null;
-      applyStreamUpdate(audioTrack, cameraVideoTrack);
+      syncOutgoingTracks();
 
       // Notify DB
       try {
@@ -744,12 +817,12 @@ export default function MeetingRoomClient({
         console.error("Failed to update flags on DB:", err);
       }
     } else {
-      if (typeof navigator === "undefined" || !navigator.mediaDevices || !(navigator.mediaDevices as any).getDisplayMedia) {
+      if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
         addToast("Screen sharing is not supported on mobile devices. Please join on a computer to share your screen.", "error", 5000);
         return;
       }
       try {
-        const s = await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: false });
+        const s = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
         if (!isMountedRef.current) { s.getTracks().forEach((t: MediaStreamTrack) => t.stop()); return; }
         screenStreamRef.current = s;
         setScreenStream(s);
@@ -757,8 +830,7 @@ export default function MeetingRoomClient({
         screenSharingRef.current = true;
 
         const screenVideoTrack = s.getVideoTracks()[0];
-        const audioTrack = localStreamRef.current?.getAudioTracks()[0] ?? null;
-        applyStreamUpdate(audioTrack, screenVideoTrack);
+        syncOutgoingTracks();
 
         // Notify DB
         try {
@@ -777,10 +849,7 @@ export default function MeetingRoomClient({
           setScreenStream(null);
           screenStreamRef.current = null;
           screenSharingRef.current = false;
-
-          const freshAudioTrack = localStreamRef.current?.getAudioTracks()[0] ?? null;
-          const freshCameraVideoTrack = camActive ? (localStreamRef.current?.getVideoTracks()[0] ?? null) : null;
-          applyStreamUpdate(freshAudioTrack, freshCameraVideoTrack);
+          syncOutgoingTracks();
 
           // Notify DB
           fetch("/api/meetings", {
@@ -810,7 +879,7 @@ export default function MeetingRoomClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: meeting.code, status: "LEFT" }),
       });
-    } catch (_) { /* ignore */ }
+    } catch { /* ignore */ }
 
     peerRef.current?.destroy();
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -861,7 +930,7 @@ export default function MeetingRoomClient({
               } else {
                 setPasswordError("Invalid password. Please try again.");
               }
-            } catch (err) {
+            } catch {
               setPasswordError("Error verifying password.");
             }
           }}
@@ -957,7 +1026,7 @@ export default function MeetingRoomClient({
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ code: meeting.code, status: "LEFT" }),
                 });
-              } catch (_) {}
+              } catch {}
               localStreamRef.current?.getTracks().forEach((t) => t.stop());
               window.location.href = "/dashboard/meetings";
             }}
@@ -992,7 +1061,7 @@ export default function MeetingRoomClient({
           <div className="relative aspect-video rounded-xl overflow-hidden bg-[#0c0c0e] border border-[#27272a] flex items-center justify-center">
             {isVoice ? (
               <div className="text-center space-y-4">
-                <div className="w-20 h-20 rounded-full bg-accent/10 border-2 border-accent flex items-center justify-center text-accent text-xl font-bold select-none relative animate-pulse shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                <div className="relative flex h-20 w-20 select-none items-center justify-center rounded-full border-2 border-accent bg-accent/10 text-xl font-bold text-accent">
                   {user.imageUrl ? (
                     <Image src={user.imageUrl} alt={user.displayName || "You"} width={80} height={80} className="rounded-full object-cover" />
                   ) : (
@@ -1056,13 +1125,24 @@ export default function MeetingRoomClient({
             <button
               onClick={async () => {
                 try {
-                  await fetch("/api/meetings", {
+                  const response = await fetch("/api/meetings", {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ code: meeting.code, status: "JOINED" }),
+                    body: JSON.stringify({
+                      code: meeting.code,
+                      status: "JOINED",
+                      password,
+                      isMuted: !micActive,
+                      isCameraOff: !camActive,
+                    }),
                   });
-                } catch (_) {}
-                setJoined(true);
+                  if (!response.ok) throw new Error(await response.text());
+                  const result = (await response.json()) as { isApproved: boolean };
+                  setIsApprovedByHost(result.isApproved);
+                  setJoined(true);
+                } catch (error) {
+                  addToast(error instanceof Error ? error.message : "Could not join the room", "error");
+                }
               }}
               className="flex-1 btn-primary py-3 text-xs font-semibold justify-center cursor-pointer"
             >
@@ -1219,7 +1299,7 @@ export default function MeetingRoomClient({
               <div className="flex flex-col items-center space-y-2">
                 <div className="relative">
                   <div className={`w-20 h-20 rounded-full bg-accent/10 border-2 flex items-center justify-center text-xl font-bold transition-all duration-300 relative z-10 ${
-                    micActive ? "border-accent shadow-[0_0_20px_rgba(16,185,129,0.3)] animate-pulse" : "border-border text-text-muted"
+                    micActive ? "border-accent" : "border-border text-text-muted"
                   }`}>
                     {user.imageUrl ? (
                       <Image src={user.imageUrl} alt={user.displayName || "You"} width={80} height={80} className="rounded-full object-cover" />
@@ -1241,9 +1321,10 @@ export default function MeetingRoomClient({
                 const isMuted = !peer.stream;
                 return (
                   <div key={peer.userId} className="flex flex-col items-center space-y-2 animate-fadeIn">
+                    <RemoteAudio peer={peer} />
                     <div className="relative">
                       <div className={`w-20 h-20 rounded-full bg-accent/10 border-2 flex items-center justify-center text-xl font-bold transition-all duration-300 relative z-10 ${
-                        !isMuted ? "border-accent shadow-[0_0_20px_rgba(16,185,129,0.3)] animate-pulse" : "border-border text-text-muted"
+                        !isMuted ? "border-accent" : "border-border text-text-muted"
                       }`}>
                         {peer.imageUrl ? (
                           <Image src={peer.imageUrl} alt={peer.displayName || "Peer"} width={80} height={80} className="rounded-full object-cover" unoptimized />
@@ -1306,7 +1387,7 @@ export default function MeetingRoomClient({
               ) : (
                 <div className="w-full h-full bg-[#18181b] flex flex-col items-center justify-center space-y-3">
                   <div className="w-8 h-8 rounded-full border-2 border-t-transparent border-accent animate-spin" />
-                  <span className="text-xs text-text-secondary">Connecting to {remoteScreenSharer.displayName || "Friend"}'s screen...</span>
+                  <span className="text-xs text-text-secondary">Connecting to {remoteScreenSharer.displayName || "Friend"}&apos;s screen...</span>
                 </div>
               )}
             </div>

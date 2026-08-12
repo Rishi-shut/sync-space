@@ -38,6 +38,35 @@ export async function POST(req: Request) {
       recipientId = null
     } = body;
 
+    if (!Object.values(MeetingType).includes(type as MeetingType)) {
+      return new NextResponse("Invalid meeting type", { status: 400 });
+    }
+
+    if (scheduledAt && Number.isNaN(new Date(scheduledAt).getTime())) {
+      return new NextResponse("Invalid scheduled time", { status: 400 });
+    }
+
+    if (recipientId) {
+      const recipient = await db.user.findUnique({ where: { id: recipientId }, select: { id: true } });
+      if (!recipient) return new NextResponse("Call recipient not found", { status: 404 });
+    }
+
+    if (conversationId) {
+      const membership = await db.conversationMember.findUnique({
+        where: { conversationId_userId: { conversationId, userId: dbUser.id } },
+      });
+      if (!membership) return new NextResponse("Conversation not found", { status: 404 });
+
+      if (recipientId) {
+        const recipientMembership = await db.conversationMember.findUnique({
+          where: { conversationId_userId: { conversationId, userId: recipientId } },
+        });
+        if (!recipientMembership) {
+          return new NextResponse("Call recipient is not in this conversation", { status: 400 });
+        }
+      }
+    }
+
     const code = generateRoomCode();
 
     const meeting = await db.meeting.create({
@@ -77,7 +106,8 @@ export async function POST(req: Request) {
             },
           },
           update: {
-            leftAt: null,
+            // Pre-authorize the recipient without claiming they already joined.
+            leftAt: new Date(),
             isApproved: true,
           },
           create: {
@@ -85,6 +115,7 @@ export async function POST(req: Request) {
             userId: recipientId,
             role: "PARTICIPANT",
             isApproved: true,
+            leftAt: new Date(),
           },
         });
       }
@@ -189,16 +220,45 @@ export async function PATCH(req: Request) {
 
     // Joining or returning to the meeting
     if (status === "JOINED") {
-      await db.meetingParticipant.updateMany({
+      const suppliedPassword = typeof body.password === "string" ? body.password : "";
+      const isHost = meeting.createdById === dbUser.id;
+      const isInvitedRecipient = meeting.recipientId === dbUser.id;
+      const isMuted = body.isMuted === true;
+      const isCameraOff = body.isCameraOff === true;
+
+      if (meeting.password && !isHost && !isInvitedRecipient && meeting.password !== suppliedPassword) {
+        return new NextResponse("Invalid meeting password", { status: 403 });
+      }
+
+      const participant = await db.meetingParticipant.upsert({
         where: {
+          meetingId_userId: {
+            meetingId: meeting.id,
+            userId: dbUser.id,
+          },
+        },
+        update: {
+          leftAt: null,
+          isMuted,
+          isCameraOff,
+        },
+        create: {
           meetingId: meeting.id,
           userId: dbUser.id,
-        },
-        data: {
-          leftAt: null,
+          role: isHost ? "HOST" : "PARTICIPANT",
+          isApproved: isHost || isInvitedRecipient || !meeting.requireApproval,
+          isMuted,
+          isCameraOff,
         },
       });
-      return NextResponse.json({ success: true });
+
+      if (isHost && meeting.status === MeetingStatus.SCHEDULED) {
+        await db.meeting.update({
+          where: { id: meeting.id },
+          data: { status: MeetingStatus.ACTIVE, startedAt: new Date() },
+        });
+      }
+      return NextResponse.json({ success: true, isApproved: participant.isApproved });
     }
 
     // Update participant flags (isScreenSharing, isMuted, etc.)
@@ -215,6 +275,17 @@ export async function PATCH(req: Request) {
           ...(isMuted !== undefined && { isMuted }),
           ...(isCameraOff !== undefined && { isCameraOff }),
         },
+      });
+      return NextResponse.json({ success: true });
+    }
+
+    if (status === "DECLINE_CALL") {
+      if (meeting.recipientId !== dbUser.id) {
+        return new NextResponse("Only the call recipient can decline", { status: 403 });
+      }
+      await db.meeting.update({
+        where: { id: meeting.id },
+        data: { status: MeetingStatus.CANCELLED, endedAt: new Date() },
       });
       return NextResponse.json({ success: true });
     }
@@ -266,34 +337,13 @@ export async function GET(req: Request) {
     const passwordParam = searchParams.get("password");
 
     if (!code) {
-      const friendships = await db.friendship.findMany({
-        where: {
-          status: "ACCEPTED",
-          OR: [
-            { senderId: dbUser.id },
-            { receiverId: dbUser.id },
-          ],
-        },
-      });
-
-      const friendIds = friendships.map((f) =>
-        f.senderId === dbUser.id ? f.receiverId : f.senderId
-      );
-
       const activeCalls = await db.meeting.findMany({
         where: {
           status: "ACTIVE",
           createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
-          OR: [
-            // Direct call to this user (can be video or voice)
-            { recipientId: dbUser.id },
-            // Public voice call created by a friend
-            {
-              recipientId: null,
-              type: "VOICE",
-              createdById: { in: friendIds },
-            }
-          ]
+          // Only an explicitly addressed call should ring this user. A friend's
+          // unrelated voice room is not an incoming call.
+          recipientId: dbUser.id,
         },
         include: {
           createdBy: {

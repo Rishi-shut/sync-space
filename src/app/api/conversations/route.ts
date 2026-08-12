@@ -21,11 +21,10 @@ export async function GET() {
     // Fetch all conversations where the user is a member
     const conversations = await db.conversation.findMany({
       where: {
-        members: {
-          some: {
-            userId: dbUser.id,
-          },
-        },
+        AND: [
+          { members: { some: { userId: dbUser.id } } },
+          { members: { none: { user: { clerkId: "sync-assistant-bot" } } } },
+        ],
       },
       include: {
         members: {
@@ -52,30 +51,31 @@ export async function GET() {
       },
     });
 
-    // Calculate actual unread counts based on lastReadAt and messages from other users
-    const conversationsWithUnread = await Promise.all(
-      conversations.map(async (convo) => {
-        const myMember = convo.members.find((m) => m.userId === dbUser.id);
-        const lastReadAt = myMember?.lastReadAt || new Date(0);
+    // One aggregate query replaces the previous per-conversation count queries.
+    const unreadRows = await db.$queryRaw<Array<{
+      conversationId: string;
+      unreadCount: number;
+    }>>`
+      SELECT
+        cm."conversationId" AS "conversationId",
+        COUNT(m.id)::int AS "unreadCount"
+      FROM conversation_members cm
+      LEFT JOIN messages m
+        ON m."conversationId" = cm."conversationId"
+        AND m."senderId" <> ${dbUser.id}
+        AND m."createdAt" > COALESCE(cm."lastReadAt", TIMESTAMP '1970-01-01')
+      WHERE cm."userId" = ${dbUser.id}
+      GROUP BY cm."conversationId"
+    `;
 
-        const unreadCount = await db.message.count({
-          where: {
-            conversationId: convo.id,
-            createdAt: {
-              gt: lastReadAt,
-            },
-            senderId: {
-              not: dbUser.id,
-            },
-          },
-        });
-
-        return {
-          ...convo,
-          unreadCount,
-        };
-      })
+    const unreadByConversation = new Map(
+      unreadRows.map((row) => [row.conversationId, row.unreadCount])
     );
+
+    const conversationsWithUnread = conversations.map((conversation) => ({
+      ...conversation,
+      unreadCount: unreadByConversation.get(conversation.id) ?? 0,
+    }));
 
     return NextResponse.json(conversationsWithUnread);
   } catch (error) {

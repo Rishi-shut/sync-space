@@ -36,30 +36,9 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
   }
 
   // Redirect to dashboard if meeting is ended
-  if (meeting.status === "ENDED") {
+  if (meeting.status === "ENDED" || meeting.status === "CANCELLED") {
     redirect("/dashboard/meetings?ended=true");
   }
-
-  const isHost = meeting.createdById === user.id;
-
-  // Upsert a participant record to mark this user as active in the meeting
-  await db.meetingParticipant.upsert({
-    where: {
-      meetingId_userId: {
-        meetingId: meeting.id,
-        userId: user.id,
-      },
-    },
-    update: {
-      leftAt: null,
-    },
-    create: {
-      meetingId: meeting.id,
-      userId: user.id,
-      role: isHost ? "HOST" : "PARTICIPANT",
-      isApproved: isHost ? true : !meeting.requireApproval,
-    },
-  });
 
   // Fetch all active participants currently in this meeting
   const activeParticipants = await db.meetingParticipant.findMany({

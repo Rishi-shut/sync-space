@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { db, getSessionUser } from "@/lib/db";
-import { Clock, VideoOff, ExternalLink } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, ExternalLink, VideoOff } from "lucide-react";
 import Link from "next/link";
 import MeetingActionsClient from "../meeting-actions-client";
 import MeetingCardActions from "./meeting-card-actions";
@@ -21,25 +21,33 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
     redirect("/onboarding");
   }
 
-  // Fetch all meetings created by this user
+  // Include rooms the user hosts, was invited to, or already joined.
   const meetings = await db.meeting.findMany({
     where: {
-      createdById: user.id,
+      OR: [
+        { createdById: user.id },
+        { recipientId: user.id },
+        { participants: { some: { userId: user.id } } },
+      ],
     },
+    include: { createdBy: { select: { displayName: true } } },
     orderBy: {
       createdAt: "desc",
     },
   });
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8 select-none animate-fadeInUp">
+    <div className="mx-auto max-w-6xl space-y-8 p-5 md:p-8">
 
       <div className="space-y-1">
-        <h2 className="text-xl font-bold text-text-primary tracking-tight">Meetings</h2>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">Calls & rooms</p>
+        <h2 className="text-2xl font-semibold tracking-tight text-text-primary">Meetings</h2>
         <p className="text-sm text-text-secondary">
-          Start a call immediately, or view your past meeting rooms.
+          Start now, schedule time, or return to a room you joined.
         </p>
       </div>
+
+      {ended && <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300"><CheckCircle2 className="size-4" />The meeting ended and your media devices were disconnected.</div>}
 
       {/* Start / Join widget */}
       <div className="w-full">
@@ -48,19 +56,19 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
 
       {/* Meeting Rooms List */}
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider">
-          Your Meeting Rooms
+        <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
+          Recent rooms
         </h3>
         {meetings.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {meetings.map((meeting) => (
               <div
                 key={meeting.id}
-                className="p-5 rounded-2xl border border-border bg-card/80 backdrop-blur-sm flex flex-col justify-between min-h-[140px] hover:border-accent/40 transition-colors"
+                className="flex min-h-[154px] flex-col justify-between rounded-2xl border border-border bg-card p-5 transition hover:border-accent/30"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-text-secondary truncate max-w-[150px]">
+                    <span className="max-w-[220px] truncate text-sm font-semibold text-text-primary">
                       {meeting.title}
                     </span>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
@@ -71,9 +79,9 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
                       {meeting.status}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-text-muted">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Created {new Date(meeting.createdAt).toLocaleDateString()}</span>
+                  <div className="mt-2 flex items-center gap-4 text-xs text-text-muted">
+                    <span className="flex items-center gap-1.5"><Clock className="size-3.5" />{meeting.scheduledAt ? new Date(meeting.scheduledAt).toLocaleString() : `Created ${new Date(meeting.createdAt).toLocaleDateString()}`}</span>
+                    <span className="flex items-center gap-1.5"><CalendarDays className="size-3.5" />{meeting.createdById === user.id ? "Hosted by you" : `Hosted by ${meeting.createdBy.displayName || "a teammate"}`}</span>
                   </div>
                 </div>
 
@@ -82,7 +90,7 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
                     {meeting.code}
                   </span>
                   <div className="flex items-center gap-2">
-                    <MeetingCardActions code={meeting.code} status={meeting.status} />
+                    {meeting.createdById === user.id && <MeetingCardActions code={meeting.code} status={meeting.status} />}
                     <Link
                       href={`/dashboard/meetings/${meeting.code}`}
                       className="btn-primary px-4 py-2 text-xs font-semibold gap-1.5"

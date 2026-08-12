@@ -46,7 +46,7 @@ export default function MeetingLoading() {
 
         {/* Cohesive loading bars */}
         <div className="w-48 h-1 bg-[#161925] rounded-full overflow-hidden border border-border/20">
-          <div className="w-full h-full bg-gradient-to-r from-accent via-sky-400 to-accent animate-loading-bar" />
+          <div className="h-full w-full animate-loading-bar bg-accent" />
         </div>
       </div>
     </div>

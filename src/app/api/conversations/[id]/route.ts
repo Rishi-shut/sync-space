@@ -68,8 +68,11 @@ export async function DELETE(
             const filePath = path.join(process.cwd(), "public", att.url);
             await unlink(filePath);
             console.log(`[CONVERSATION_DELETE] Physically deleted upload file: ${filePath}`);
-          } catch (err: any) {
-            console.warn(`[CONVERSATION_DELETE] Failed to delete file on disk for ${att.url}:`, err.message);
+          } catch (err: unknown) {
+            console.warn(
+              `[CONVERSATION_DELETE] Failed to delete file on disk for ${att.url}:`,
+              err instanceof Error ? err.message : err
+            );
           }
         }
       }

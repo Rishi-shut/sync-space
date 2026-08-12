@@ -52,11 +52,13 @@ export async function GET() {
       },
     });
 
-    const friendsList: any[] = [];
-    const incomingRequests: any[] = [];
-    const outgoingRequests: any[] = [];
+    type FriendshipRow = (typeof friendships)[number];
+    type FriendProfile = FriendshipRow["sender"];
+    const friendsList: Array<{ friendshipId: string; friend: FriendProfile }> = [];
+    const incomingRequests: Array<{ friendshipId: string; requester: FriendProfile }> = [];
+    const outgoingRequests: Array<{ friendshipId: string; receiver: FriendProfile }> = [];
 
-    friendships.forEach((f: any) => {
+    friendships.forEach((f) => {
       if (f.status === FriendshipStatus.ACCEPTED) {
         // Friend is the other user
         const friend = f.senderId === dbUser.id ? f.receiver : f.sender;

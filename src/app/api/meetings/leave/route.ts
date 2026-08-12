@@ -17,7 +17,10 @@ export async function POST(req: Request) {
       return new NextResponse("User not found in local DB", { status: 404 });
     }
 
-    const body = await req.json().catch(() => ({}));
+    const contentType = req.headers.get("content-type") ?? "";
+    const body = contentType.includes("application/json")
+      ? await req.json().catch(() => ({}))
+      : JSON.parse(await req.text().catch(() => "{}"));
     const { code } = body;
 
     if (!code) {

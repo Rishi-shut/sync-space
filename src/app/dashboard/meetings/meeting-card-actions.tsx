@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Trash2, PhoneOff, Loader2 } from "lucide-react";
 
 interface MeetingCardActionsProps {
@@ -10,7 +9,6 @@ interface MeetingCardActionsProps {
 }
 
 export default function MeetingCardActions({ code, status }: MeetingCardActionsProps) {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -110,7 +108,7 @@ export default function MeetingCardActions({ code, status }: MeetingCardActionsP
           <div className="bg-[#14141b] border border-[#24242e] rounded-2xl p-6 max-w-sm w-full relative z-10 space-y-4 animate-scaleIn shadow-2xl">
             <h3 className="text-sm font-bold text-white">Delete Meeting Room?</h3>
             <p className="text-xs text-[#a1a1aa] leading-relaxed">
-              Are you sure you want to permanently delete this meeting room code "{code}"? This action cannot be undone.
+              Are you sure you want to permanently delete this meeting room code &ldquo;{code}&rdquo;? This action cannot be undone.
             </p>
             <div className="flex items-center gap-2 pt-2">
               <button
