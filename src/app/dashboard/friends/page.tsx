@@ -13,7 +13,5 @@ export default async function FriendsPage() {
     redirect("/onboarding");
   }
 
-  return (
-    <FriendsClient userId={user.id} />
-  );
+  return <FriendsClient />;
 }

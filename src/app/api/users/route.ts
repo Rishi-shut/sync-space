@@ -20,9 +20,8 @@ export async function GET() {
     // Get all users except the current one
     const users = await db.user.findMany({
       where: {
-        id: {
-          not: dbUser.id,
-        },
+        id: { not: dbUser.id },
+        clerkId: { not: "sync-assistant-bot" },
       },
       select: {
         id: true,

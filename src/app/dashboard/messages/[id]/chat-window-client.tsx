@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, User as UserIcon, Trash2, ArrowLeft, Video, Phone, Paperclip, X, File } from "lucide-react";
+import { Send, Trash2, ArrowLeft, Video, Phone, Paperclip, X, File, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -47,6 +47,7 @@ interface Message {
   createdAt: string;
   sender: MessageSender;
   attachments?: AttachmentInfo[];
+  deliveryStatus?: "sending" | "failed";
 }
 
 interface ChatWindowClientProps {
@@ -61,17 +62,24 @@ export default function ChatWindowClient({
   initialMessages,
 }: ChatWindowClientProps) {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [content, setContent] = useState("");
-  const [isSending, setIsSending] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [attachments, setAttachments] = useState<any[]>([]);
+  const [attachments, setAttachments] = useState<AttachmentInfo[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesViewportRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pollInFlightRef = useRef(false);
+  const didInitialScrollRef = useRef(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const latestServerTimestampRef = useRef(
+    initialMessages.at(-1)?.createdAt ?? null
+  );
+  const latestIncomingMessageId = [...messages]
+    .reverse()
+    .find((message) => message.senderId !== userId && !message.deliveryStatus)?.id;
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -94,8 +102,8 @@ export default function ChatWindowClient({
 
       const attachment = await res.json();
       setAttachments((prev) => [...prev, attachment]);
-    } catch (err: any) {
-      alert(err.message || "Failed to upload file");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Failed to upload file");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -129,8 +137,8 @@ export default function ChatWindowClient({
 
       // 2. Redirect host directly into the call room
       router.push(`/dashboard/meetings/${meeting.code}`);
-    } catch (err: any) {
-      alert(err.message || "Failed to start call");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Failed to start call");
     } finally {
       setIsCalling(false);
     }
@@ -157,8 +165,8 @@ export default function ChatWindowClient({
 
       // 2. Redirect host directly into the call room
       router.push(`/dashboard/meetings/${meeting.code}`);
-    } catch (err: any) {
-      alert(err.message || "Failed to start voice call");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Failed to start voice call");
     } finally {
       setIsCalling(false);
     }
@@ -171,88 +179,123 @@ export default function ChatWindowClient({
         method: "DELETE",
       });
       if (res.ok) {
-        window.location.href = "/dashboard/messages";
+        window.dispatchEvent(new Event("syncspace:conversations-changed"));
+        router.replace("/dashboard/messages");
+        router.refresh();
       } else {
-        alert("Failed to delete the chat.");
+        setFeedback("Failed to delete the conversation.");
       }
     } catch (err) {
       console.error("Error deleting conversation:", err);
-      alert("An error occurred. Please try again.");
+      setFeedback("An error occurred. Please try again.");
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Auto-scroll to bottom of page
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   // Mark conversation as read
   useEffect(() => {
+    const controller = new AbortController();
     const markAsRead = async () => {
       try {
         await fetch(`/api/conversations/${conversation.id}`, {
           method: "PATCH",
+          signal: controller.signal,
         });
+        window.dispatchEvent(new Event("syncspace:conversations-changed"));
       } catch (err) {
-        console.error("Failed to mark conversation as read:", err);
+        if (!(err instanceof DOMException && err.name === "AbortError")) {
+          console.error("Failed to mark conversation as read:", err);
+        }
       }
     };
-    markAsRead();
-  }, [conversation.id, messages.length]);
+    const timeout = window.setTimeout(markAsRead, 300);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [conversation.id, latestIncomingMessageId]);
 
   useEffect(() => {
-    scrollToBottom();
+    const viewport = messagesViewportRef.current;
+    if (!viewport) return;
+    const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    if (!didInitialScrollRef.current || distanceFromBottom < 220) {
+      viewport.scrollTo({
+        top: viewport.scrollHeight,
+        behavior: didInitialScrollRef.current ? "smooth" : "instant",
+      });
+    }
+    didInitialScrollRef.current = true;
   }, [messages]);
 
-  // Polling for new messages every 3 seconds
+  // Fetch only messages newer than the latest server message. Own messages are
+  // inserted optimistically, so sending feels instant while this keeps peers in sync.
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
 
     const poll = async () => {
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+      if (pollInFlightRef.current || document.visibilityState !== "visible") {
         return;
       }
+      pollInFlightRef.current = true;
       try {
-        const res = await fetch(`/api/conversations/${conversation.id}/messages`, {
+        const after = latestServerTimestampRef.current;
+        const query = after ? `?after=${encodeURIComponent(after)}` : "";
+        const res = await fetch(`/api/conversations/${conversation.id}/messages${query}`, {
           signal: controller.signal,
+          cache: "no-store",
         });
         if (res.ok && active) {
           const data = await res.json();
-          // Merge / replace history
-          setMessages(data.items);
+          setMessages((current) => {
+            const merged = new Map(current.map((message) => [message.id, message]));
+            data.items.forEach((message: Message) => merged.set(message.id, message));
+            return Array.from(merged.values()).sort(
+              (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            );
+          });
+
+          const newest = data.items.at(-1) as Message | undefined;
+          if (newest) latestServerTimestampRef.current = newest.createdAt;
         }
-      } catch (err: any) {
-        if (err.name !== "AbortError") {
-          console.error("Error polling messages:", err);
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.error("Error polling messages:", error);
         }
+      } finally {
+        pollInFlightRef.current = false;
       }
     };
 
-    const interval = setInterval(poll, 3000);
+    void poll();
+    const interval = setInterval(poll, 800);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") void poll();
+    };
+    window.addEventListener("focus", poll);
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       active = false;
       controller.abort();
+      pollInFlightRef.current = false;
       clearInterval(interval);
+      window.removeEventListener("focus", poll);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [conversation.id]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!content.trim() && attachments.length === 0) || isSending || isUploading) return;
+    if ((!content.trim() && attachments.length === 0) || isUploading) return;
 
-    setIsSending(true);
     const textToSend = content;
     const attachmentsToSend = attachments;
     setContent("");
     setAttachments([]);
+    setFeedback(null);
 
     let type = "TEXT";
     if (attachmentsToSend.length > 0) {
@@ -263,6 +306,24 @@ export default function ChatWindowClient({
         type = "FILE";
       }
     }
+
+    const currentUser = conversation.members.find((member) => member.userId === userId)?.user;
+    const optimisticId = `optimistic-${crypto.randomUUID()}`;
+    const optimisticMessage: Message = {
+      id: optimisticId,
+      content: textToSend,
+      senderId: userId,
+      createdAt: new Date().toISOString(),
+      sender: {
+        id: userId,
+        displayName: currentUser?.displayName ?? "You",
+        imageUrl: currentUser?.imageUrl ?? null,
+      },
+      attachments: attachmentsToSend,
+      deliveryStatus: "sending",
+    };
+
+    setMessages((current) => [...current, optimisticMessage]);
 
     try {
       const res = await fetch(`/api/conversations/${conversation.id}/messages`, {
@@ -275,14 +336,29 @@ export default function ChatWindowClient({
         }),
       });
 
-      if (res.ok) {
-        const newMsg = await res.json();
-        setMessages((prev) => [...prev, newMsg]);
-      }
-    } catch (err) {
-      console.error("Failed to send message:", err);
-    } finally {
-      setIsSending(false);
+      if (!res.ok) throw new Error(await res.text());
+
+      const newMessage = await res.json();
+      latestServerTimestampRef.current = newMessage.createdAt;
+      setMessages((current) => {
+        const withoutDuplicates = current.filter(
+          (message) => message.id !== optimisticId && message.id !== newMessage.id
+        );
+        return [...withoutDuplicates, newMessage].sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      });
+      window.dispatchEvent(new Event("syncspace:conversations-changed"));
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      setFeedback("Message not sent. Check your connection and try again.");
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === optimisticId
+            ? { ...message, deliveryStatus: "failed" }
+            : message
+        )
+      );
     }
   };
 
@@ -293,9 +369,9 @@ export default function ChatWindowClient({
   const displayName = isDirect ? partner?.displayName || "User" : conversation.name || "Group Chat";
 
   return (
-    <div className="flex flex-col w-full h-full bg-background select-none">
+    <div className="flex h-full w-full flex-col bg-background">
       {/* Top Header Panel */}
-      <div className="h-16 px-6 border-b border-border flex items-center justify-between bg-card">
+      <div className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur md:px-6">
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard/messages"
@@ -388,17 +464,16 @@ export default function ChatWindowClient({
       </div>
 
       {/* Messages Feed Frame */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div ref={messagesViewportRef} className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
+        <div className="mx-auto max-w-4xl space-y-4">
         {messages.map((msg) => {
           const isOwn = msg.senderId === userId;
-          const timeLabel = mounted
-            ? formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })
-            : "";
+          const timeLabel = formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true });
 
           return (
             <div
               key={msg.id}
-              className={`flex gap-3 max-w-[80%] ${isOwn ? "ml-auto flex-row-reverse" : "mr-auto"}`}
+              className={`flex gap-3 max-w-[80%] ${isOwn ? "ml-auto flex-row-reverse" : "mr-auto"} ${msg.deliveryStatus === "sending" ? "opacity-70" : ""}`}
             >
               {/* Sender Avatar */}
               {!isOwn && (
@@ -483,18 +558,29 @@ export default function ChatWindowClient({
                     })}
                   </div>
                 )}
-                <span className="text-[8px] text-text-secondary block px-1 text-right">
-                  {timeLabel}
+                <span suppressHydrationWarning className="text-[8px] text-text-secondary block px-1 text-right">
+                  {msg.deliveryStatus === "sending"
+                    ? "Sending…"
+                    : msg.deliveryStatus === "failed"
+                      ? "Not sent"
+                      : timeLabel}
                 </span>
               </div>
             </div>
           );
         })}
-        <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Text Message Input Panel */}
-      <form onSubmit={handleSend} className="p-4 bg-card border-t border-border flex flex-col gap-3">
+      <form onSubmit={handleSend} className="shrink-0 border-t border-border bg-background px-4 pb-4 pt-3 md:px-8">
+        <div className="mx-auto flex max-w-4xl flex-col gap-3">
+        {feedback && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+            <span className="flex items-center gap-2"><AlertCircle className="size-3.5 shrink-0" />{feedback}</span>
+            <button type="button" onClick={() => setFeedback(null)} aria-label="Dismiss"><X className="size-3.5" /></button>
+          </div>
+        )}
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 animate-fadeIn">
             {attachments.map((att, index) => {
@@ -530,7 +616,7 @@ export default function ChatWindowClient({
           </div>
         )}
 
-        <div className="flex gap-2 items-center">
+        <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm focus-within:border-accent/50">
           <input
             type="file"
             ref={fileInputRef}
@@ -540,7 +626,7 @@ export default function ChatWindowClient({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isSending || isUploading}
+            disabled={isUploading}
             className="p-2 rounded-lg border border-border bg-card text-accent hover:bg-accent/10 hover:text-accent transition-all cursor-pointer flex items-center justify-center"
             title="Attach file or picture"
           >
@@ -556,16 +642,17 @@ export default function ChatWindowClient({
             onChange={(e) => setContent(e.target.value)}
             placeholder={isUploading ? "Uploading file..." : "Type your message..."}
             disabled={isUploading}
-            className="flex-1 input bg-background border-border text-xs py-2 text-foreground"
+            className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-foreground outline-none placeholder:text-text-muted"
           />
           <button
             type="submit"
-            disabled={isSending || isUploading || (!content.trim() && attachments.length === 0)}
-            className="btn-primary px-4 py-2 text-xs font-semibold gap-1.5"
+            disabled={isUploading || (!content.trim() && attachments.length === 0)}
+            className="btn-primary gap-1.5 px-4 py-2.5 text-xs font-semibold"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Send</span>
           </button>
+        </div>
         </div>
       </form>
 

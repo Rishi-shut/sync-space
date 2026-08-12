@@ -5,6 +5,13 @@ import { MessageType } from "@/generated/client";
 
 const MESSAGES_BATCH = 30;
 
+interface AttachmentInput {
+  name: string;
+  url: string;
+  mimeType: string;
+  size: number;
+}
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -28,6 +35,9 @@ export async function GET(
     // Parse pagination query
     const { searchParams } = new URL(req.url);
     const cursor = searchParams.get("cursor");
+    const after = searchParams.get("after");
+    const afterDate = after ? new Date(after) : null;
+    const hasValidAfter = afterDate !== null && !Number.isNaN(afterDate.getTime());
 
     // Check if user is member of this conversation
     const isMember = await db.conversationMember.findUnique({
@@ -45,7 +55,35 @@ export async function GET(
 
     // Retrieve messages
     let messages;
-    if (cursor) {
+    if (hasValidAfter) {
+      messages = await db.message.findMany({
+        take: 100,
+        where: {
+          conversationId,
+          createdAt: { gte: afterDate },
+        },
+        include: {
+          sender: {
+            select: {
+              id: true,
+              displayName: true,
+              imageUrl: true,
+            },
+          },
+          attachments: true,
+          reactions: {
+            include: {
+              user: {
+                select: {
+                  displayName: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+    } else if (cursor) {
       messages = await db.message.findMany({
         take: MESSAGES_BATCH,
         skip: 1,
@@ -115,8 +153,10 @@ export async function GET(
     }
 
     return NextResponse.json({
-      items: messages.reverse(),
+      items: hasValidAfter ? messages : messages.reverse(),
       nextCursor,
+    }, {
+      headers: { "Cache-Control": "private, no-store" },
     });
   } catch (error) {
     console.error("[MESSAGES_GET_ERROR]", error);
@@ -144,7 +184,17 @@ export async function POST(
 
     const { id: conversationId } = await params;
     const body = await req.json();
-    const { content, type = "TEXT", parentId, attachments = [] } = body;
+    const {
+      content,
+      type = "TEXT",
+      parentId,
+      attachments = [],
+    } = body as {
+      content?: string;
+      type?: string;
+      parentId?: string;
+      attachments?: AttachmentInput[];
+    };
 
     if (!content && attachments.length === 0) {
       return new NextResponse("Message content or attachments required", { status: 400 });
@@ -173,7 +223,7 @@ export async function POST(
         senderId: dbUser.id,
         parentId: parentId || null,
         attachments: {
-          create: attachments.map((att: any) => ({
+          create: attachments.map((att) => ({
             name: att.name,
             url: att.url,
             mimeType: att.mimeType,

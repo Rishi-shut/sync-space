@@ -6,7 +6,6 @@ import {
   Users,
   MessageSquare,
   Video,
-  UserCheck,
   UserX,
   UserPlus,
   Clock,
@@ -38,11 +37,7 @@ interface RequestItem {
   receiver?: Friend;
 }
 
-interface FriendsClientProps {
-  userId: string;
-}
-
-export default function FriendsClient({ userId }: FriendsClientProps) {
+export default function FriendsClient() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"all" | "pending" | "add">("all");
   const [friends, setFriends] = useState<FriendshipItem[]>([]);
@@ -71,8 +66,8 @@ export default function FriendsClient({ userId }: FriendsClientProps) {
         setIncoming(data.incoming || []);
         setOutgoing(data.outgoing || []);
       }
-    } catch (err: any) {
-      if (err.name !== "AbortError") {
+    } catch (err: unknown) {
+      if (!(err instanceof DOMException && err.name === "AbortError")) {
         console.error("Failed to load friends:", err);
       }
     } finally {
@@ -82,7 +77,7 @@ export default function FriendsClient({ userId }: FriendsClientProps) {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchFriendsData(controller.signal);
+    queueMicrotask(() => fetchFriendsData(controller.signal));
     // Poll friends and requests list every 12 seconds to keep online states synced
     const interval = setInterval(() => fetchFriendsData(controller.signal), 12000);
     return () => {
@@ -119,7 +114,7 @@ export default function FriendsClient({ userId }: FriendsClientProps) {
         const errMsg = await res.text();
         setFormError(errMsg || "Failed to send request.");
       }
-    } catch (err) {
+    } catch {
       setFormError("An error occurred. Please try again.");
     } finally {
       setFormLoading(false);
@@ -183,13 +178,18 @@ export default function FriendsClient({ userId }: FriendsClientProps) {
       });
 
       if (!convoRes.ok) throw new Error("Could not start conversation channel");
-      const convo = await convoRes.json();
+      const convo = (await convoRes.json()) as { id: string };
 
       // 2. Create Instant Meeting
       const meetingRes = await fetch("/api/meetings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: `Call with ${friend.displayName || "Friend"}` }),
+        body: JSON.stringify({
+          title: `Call with ${friend.displayName || "Friend"}`,
+          type: "VIDEO",
+          conversationId: convo.id,
+          recipientId: friend.id,
+        }),
       });
 
       if (!meetingRes.ok) throw new Error("Could not initialize meeting room");
@@ -205,8 +205,8 @@ export default function FriendsClient({ userId }: FriendsClientProps) {
 
       // 4. Redirect host into the meeting room
       router.push(`/dashboard/meetings/${meeting.code}`);
-    } catch (err: any) {
-      alert(err.message || "Failed to invite friend to call");
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "Failed to invite friend to call");
     } finally {
       setActionLoading(null);
     }
@@ -224,7 +224,7 @@ export default function FriendsClient({ userId }: FriendsClientProps) {
       });
 
       if (!convoRes.ok) throw new Error("Could not start conversation channel");
-      const convo = await convoRes.json();
+      const convo = (await convoRes.json()) as { id: string };
 
       // 2. Create Instant Meeting
       const meetingRes = await fetch("/api/meetings", {
@@ -232,7 +232,9 @@ export default function FriendsClient({ userId }: FriendsClientProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           title: `Voice Call with ${friend.displayName || "Friend"}`,
-          type: "VOICE" 
+          type: "VOICE",
+          conversationId: convo.id,
+          recipientId: friend.id,
         }),
       });
 
@@ -241,18 +243,11 @@ export default function FriendsClient({ userId }: FriendsClientProps) {
 
       // 3. Redirect host into the meeting room
       router.push(`/dashboard/meetings/${meeting.code}`);
-    } catch (err: any) {
-      alert(err.message || "Failed to invite friend to voice call");
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "Failed to invite friend to voice call");
     } finally {
       setActionLoading(null);
     }
-  };
-
-  const statusColors: Record<string, string> = {
-    ONLINE: "bg-emerald-500",
-    AWAY: "bg-amber-500",
-    BUSY: "bg-rose-500",
-    OFFLINE: "bg-slate-500",
   };
 
   return (

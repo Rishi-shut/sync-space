@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/db";
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/lib/db";
 import Sidebar from "@/components/layout/sidebar";
 import Navbar from "@/components/layout/navbar";
 import PageTransition from "@/components/layout/page-transition";
@@ -11,20 +12,21 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getSessionUser();
+  const { userId } = await auth();
 
-  // Redirect if user not logged in or doesn't exist
-  if (!user) {
-    redirect("/sign-in");
+  if (!userId) {
+    redirect("/sign-in?redirect_url=/dashboard");
   }
 
-  // Redirect to onboarding if not created in PostgreSQL db yet (or lacks profile configuration)
-  if (!user.isOnboarded) {
+  const user = await db.user.findUnique({ where: { clerkId: userId } });
+
+  // A valid Clerk session may exist before its local profile has been synced.
+  if (!user || !user.isOnboarded) {
     redirect("/onboarding");
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground transition-colors duration-200">
+    <div className="flex h-dvh overflow-hidden bg-background text-foreground transition-colors duration-200">
       {/* Sidebar navigation */}
       <Sidebar user={user} />
 

@@ -32,8 +32,8 @@ export default function DeleteMeetingButton({
 
       addToast("Scheduled meeting deleted successfully.", "success", 3000);
       router.refresh();
-    } catch (err: any) {
-      addToast(err.message || "Failed to delete meeting", "error", 5000);
+    } catch (err: unknown) {
+      addToast(err instanceof Error ? err.message : "Failed to delete meeting", "error", 5000);
     } finally {
       setIsDeleting(false);
     }
@@ -60,7 +60,7 @@ export default function DeleteMeetingButton({
           <div className="bg-[#14141b] border border-[#24242e] rounded-2xl p-6 max-w-sm w-full relative z-10 space-y-4 animate-scaleIn shadow-2xl">
             <h3 className="text-sm font-bold text-white">Delete Scheduled Meeting?</h3>
             <p className="text-xs text-[#a1a1aa] leading-relaxed">
-              Are you sure you want to delete the scheduled meeting "{meetingTitle}"? This action cannot be undone.
+              Are you sure you want to delete the scheduled meeting &ldquo;{meetingTitle}&rdquo;? This action cannot be undone.
             </p>
             <div className="flex items-center gap-2 pt-2">
               <button

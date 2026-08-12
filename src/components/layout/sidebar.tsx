@@ -1,23 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
+import { useClerk } from "@clerk/nextjs";
 import {
-  LayoutDashboard,
-  MessageSquare,
-  Video,
-  Settings,
+  AudioLines,
   ChevronLeft,
   ChevronRight,
-  Zap,
+  LayoutGrid,
   LogOut,
+  MessageCircle,
+  Settings,
   Users,
+  Video,
+  X,
 } from "lucide-react";
-import { useClerk } from "@clerk/nextjs";
 import { useUIStore } from "@/stores/ui-store";
-import Image from "next/image";
 
 interface SidebarProps {
   user: {
@@ -29,364 +29,250 @@ interface SidebarProps {
   };
 }
 
-const navItems = [
-  { label: "Dashboard",    href: "/dashboard",           icon: LayoutDashboard },
-  { label: "Messages",     href: "/dashboard/messages",  icon: MessageSquare   },
-  { label: "Meetings",     href: "/dashboard/meetings",  icon: Video           },
-  { label: "Friends",      href: "/dashboard/friends",   icon: Users           },
-  { label: "Settings",     href: "/dashboard/settings",  icon: Settings        },
+interface ConversationMember {
+  userId: string;
+  user: {
+    id: string;
+    displayName: string | null;
+    imageUrl: string | null;
+    status: string;
+  };
+}
+
+interface ConversationSummary {
+  id: string;
+  type: "DIRECT" | "GROUP";
+  name: string | null;
+  unreadCount: number;
+  members: ConversationMember[];
+}
+
+const primaryNavigation = [
+  { label: "Home", href: "/dashboard", icon: LayoutGrid },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageCircle },
+  { label: "Meetings", href: "/dashboard/meetings", icon: Video },
+  { label: "People", href: "/dashboard/friends", icon: Users },
 ];
+
+function Brand({ compact = false }: { compact?: boolean }) {
+  return (
+    <Link href="/dashboard" className={`flex items-center ${compact ? "justify-center" : "gap-3"}`}>
+      <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-white shadow-[0_10px_26px_var(--accent-glow)]">
+        <AudioLines className="h-4 w-4" strokeWidth={2.4} />
+        <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-sidebar bg-success" />
+      </span>
+      {!compact && (
+        <div className="min-w-0">
+          <p className="text-sm font-semibold tracking-[-0.025em] text-text-primary">Sync Space</p>
+          <p className="text-[9px] font-medium text-text-muted">Personal workspace</p>
+        </div>
+      )}
+    </Link>
+  );
+}
+
+function PresenceDot({ status }: { status: string }) {
+  const color = {
+    ONLINE: "bg-success",
+    AWAY: "bg-amber-400",
+    BUSY: "bg-rose-500",
+    OFFLINE: "bg-text-muted",
+  }[status] ?? "bg-text-muted";
+
+  return <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-sidebar ${color}`} />;
+}
 
 export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
-  const router   = useRouter();
+  const router = useRouter();
   const { signOut } = useClerk();
-  const { sidebarCollapsed, toggleSidebarCollapse, sidebarOpen, toggleSidebar } = useUIStore();
-  const [conversations, setConversations] = useState<any[]>([]);
+  const {
+    sidebarCollapsed,
+    toggleSidebarCollapse,
+    sidebarOpen,
+    toggleSidebar,
+  } = useUIStore();
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+
+  const loadConversations = useCallback(async () => {
+    if (document.visibilityState !== "visible") return;
+
+    try {
+      const response = await fetch("/api/conversations", { cache: "no-store" });
+      if (response.ok) setConversations(await response.json());
+    } catch {
+      // Keep the last known list during brief network interruptions.
+    }
+  }, []);
+
+  useEffect(() => {
+    queueMicrotask(() => void loadConversations());
+
+    // The dedicated message layout already refreshes conversations frequently.
+    // Elsewhere, a slower cadence is enough for unread navigation badges.
+    if (pathname.startsWith("/dashboard/messages")) return;
+
+    const interval = window.setInterval(loadConversations, 15_000);
+    const refresh = () => void loadConversations();
+    window.addEventListener("focus", refresh);
+    window.addEventListener("syncspace:conversations-changed", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("syncspace:conversations-changed", refresh);
+    };
+  }, [loadConversations, pathname]);
+
+  const unreadTotal = useMemo(
+    () => conversations.reduce((total, conversation) => total + conversation.unreadCount, 0),
+    [conversations]
+  );
+
+  const visibleConversations = conversations.slice(0, 7);
 
   const handleLogout = async () => {
     await signOut();
     router.push("/");
   };
 
-  useEffect(() => {
-    const fetchConversations = async () => {
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
-        return;
-      }
-      try {
-        const res = await fetch("/api/conversations");
-        if (res.ok) setConversations(await res.json());
-      } catch { /* ignore */ }
-    };
-    fetchConversations();
-    const interval = setInterval(fetchConversations, 10_000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
+  const renderContent = (compact: boolean, mobile = false) => (
     <>
-      <motion.aside
-        animate={{ width: sidebarCollapsed ? 72 : 256 }}
-        transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-        className="hidden md:flex flex-col h-screen overflow-hidden select-none border-r border-border-subtle bg-sidebar relative z-20 flex-shrink-0"
-      >
-        {/* ── Brand ───────────────────────────────── */}
-        <div className="h-[60px] px-4 flex items-center justify-between border-b border-border-subtle flex-shrink-0">
-          {!sidebarCollapsed ? (
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-accent shadow-lg shadow-accent/20 flex-shrink-0">
-                <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
-              </div>
-              <span className="text-[15px] font-bold tracking-tight text-text-primary leading-none">
-                Sync<span className="text-gradient">Space</span>
-              </span>
-            </Link>
-          ) : (
-            <Link href="/" className="mx-auto w-8 h-8 rounded-xl flex items-center justify-center bg-accent shadow-lg shadow-accent/20 cursor-pointer">
-              <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
-            </Link>
-          )}
+      <div className={`flex h-[72px] shrink-0 items-center border-b border-border-subtle ${compact ? "justify-center px-2" : "justify-between px-4"}`}>
+        <Brand compact={compact} />
+        {!compact && (
+          <button
+            onClick={mobile ? toggleSidebar : toggleSidebarCollapse}
+            aria-label={mobile ? "Close navigation" : "Collapse navigation"}
+            className="grid h-8 w-8 place-items-center rounded-lg text-text-muted transition-colors hover:bg-sidebar-hover hover:text-text-primary"
+          >
+            {mobile ? <X className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
 
-          {!sidebarCollapsed && (
-            <button
-              onClick={toggleSidebarCollapse}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-text-secondary hover:bg-sidebar-hover transition-all"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+      <div className="flex-1 overflow-y-auto px-3 py-4">
+        {compact && (
+          <button
+            onClick={toggleSidebarCollapse}
+            aria-label="Expand navigation"
+            className="mb-3 grid h-10 w-full place-items-center rounded-xl text-text-muted transition-colors hover:bg-sidebar-hover hover:text-text-primary"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
 
-        {/* ── Nav Items ───────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {sidebarCollapsed && (
-            <button
-              onClick={toggleSidebarCollapse}
-              className="w-full flex justify-center py-2 mb-3 text-text-muted hover:text-text-secondary hover:bg-sidebar-hover rounded-lg transition-all"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          )}
-
-          {navItems.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
+        <nav className="space-y-1" aria-label="Workspace">
+          {primaryNavigation.map((item) => {
+            const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
             const Icon = item.icon;
-
-            const totalUnreads = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
             return (
               <Link
-                key={item.label}
+                key={item.href}
                 href={item.href}
-                title={sidebarCollapsed ? item.label : undefined}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-[9px] transition-all duration-150 group ${
-                  isActive
-                    ? "bg-sidebar-active text-accent font-semibold"
-                    : "text-text-secondary hover:bg-sidebar-hover hover:text-text-primary"
-                } ${sidebarCollapsed ? "justify-center" : ""}`}
+                onClick={mobile ? toggleSidebar : undefined}
+                title={compact ? item.label : undefined}
+                className={`group flex h-10 items-center rounded-xl transition-colors ${
+                  compact ? "justify-center" : "gap-3 px-3"
+                } ${active ? "bg-sidebar-active text-text-primary" : "text-text-secondary hover:bg-sidebar-hover hover:text-text-primary"}`}
               >
-                <Icon
-                  className={`w-[18px] h-[18px] flex-shrink-0 transition-all ${
-                    isActive ? "text-accent" : "text-text-muted group-hover:text-text-secondary"
-                  }`}
-                />
-                {!sidebarCollapsed && (
-                  <span className="text-[13.5px] flex-1 truncate">{item.label}</span>
-                )}
-                {!sidebarCollapsed && item.label === "Messages" && totalUnreads > 0 && (
-                  <span className="badge text-[10px] bg-accent text-white">{totalUnreads}</span>
+                <Icon className={`h-[17px] w-[17px] shrink-0 ${active ? "text-accent" : "text-text-muted group-hover:text-text-secondary"}`} />
+                {!compact && <span className="flex-1 text-[13px] font-medium">{item.label}</span>}
+                {!compact && item.label === "Messages" && unreadTotal > 0 && (
+                  <span className="grid min-w-5 place-items-center rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold text-white">
+                    {unreadTotal > 99 ? "99+" : unreadTotal}
+                  </span>
                 )}
               </Link>
             );
           })}
+        </nav>
 
-          {/* ── DM List ─────────────────────────── */}
-          {!sidebarCollapsed && conversations.length > 0 && (
-            <div className="pt-5 mt-2 border-t border-border-subtle">
-              <p className="px-3 mb-2 section-label">Direct Messages</p>
-              <div className="space-y-0.5">
-                {conversations.map((convo) => {
-                  const isDirect = convo.type === "DIRECT";
-                  const partner = convo.members.find((m: any) => m.userId !== user.id)?.user;
-                  const displayName = isDirect ? partner?.displayName || "User" : convo.name || "Group";
-                  const status = isDirect ? partner?.status?.toLowerCase() : null;
-                  const initials = displayName[0]?.toUpperCase() || "U";
-                  const isActive = pathname === `/dashboard/messages/${convo.id}`;
-
-                  return (
-                    <Link
-                      key={convo.id}
-                      href={`/dashboard/messages/${convo.id}`}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-[9px] transition-all text-[13px] ${
-                        isActive
-                          ? "bg-sidebar-active text-accent font-semibold"
-                          : "text-text-secondary hover:bg-sidebar-hover hover:text-text-primary"
-                      }`}
-                    >
-                      <div className="relative flex-shrink-0">
-                        <div className="w-6 h-6 rounded-lg bg-sidebar-hover flex items-center justify-center text-[10px] font-bold text-accent border border-border-subtle">
-                          {initials}
-                        </div>
-                        {status && (
-                          <div
-                            className={`avatar-status ${status}`}
-                            style={{ width: "7px", height: "7px", border: "1.5px solid var(--sidebar-bg)" }}
-                          />
-                        )}
-                      </div>
-                      <span className="truncate flex-1">{displayName}</span>
-                      {convo.unreadCount > 0 && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0 animate-pulse" />
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
+        {!compact && visibleConversations.length > 0 && (
+          <section className="mt-7">
+            <div className="mb-2 flex items-center justify-between px-3">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-text-muted">Recent</p>
+              <Link href="/dashboard/messages" className="text-[9px] font-medium text-text-muted hover:text-text-primary">View all</Link>
             </div>
+            <div className="space-y-0.5">
+              {visibleConversations.map((conversation) => {
+                const partner = conversation.members.find((member) => member.userId !== user.id)?.user;
+                const name = conversation.type === "DIRECT"
+                  ? partner?.displayName || "Unknown person"
+                  : conversation.name || "Group conversation";
+                const active = pathname === `/dashboard/messages/${conversation.id}`;
+
+                return (
+                  <Link
+                    key={conversation.id}
+                    href={`/dashboard/messages/${conversation.id}`}
+                    onClick={mobile ? toggleSidebar : undefined}
+                    className={`flex items-center gap-2.5 rounded-xl px-3 py-2 transition-colors ${active ? "bg-sidebar-active" : "hover:bg-sidebar-hover"}`}
+                  >
+                    <span className="relative grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-[10px] bg-bg-secondary text-[10px] font-semibold text-text-secondary">
+                      {partner?.imageUrl ? (
+                        <Image src={partner.imageUrl} alt="" fill className="object-cover" />
+                      ) : name.slice(0, 1).toUpperCase()}
+                      {conversation.type === "DIRECT" && partner && <PresenceDot status={partner.status} />}
+                    </span>
+                    <span className={`min-w-0 flex-1 truncate text-[12px] ${active ? "font-semibold text-text-primary" : "font-medium text-text-secondary"}`}>{name}</span>
+                    {conversation.unreadCount > 0 && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />}
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </div>
+
+      <div className="shrink-0 border-t border-border-subtle p-3">
+        <Link
+          href="/dashboard/settings"
+          onClick={mobile ? toggleSidebar : undefined}
+          className={`mb-2 flex h-9 items-center rounded-xl text-text-muted transition-colors hover:bg-sidebar-hover hover:text-text-primary ${compact ? "justify-center" : "gap-3 px-2.5"}`}
+        >
+          <Settings className="h-4 w-4" />
+          {!compact && <span className="text-[12px] font-medium">Settings</span>}
+        </Link>
+
+        <div className={`flex items-center rounded-xl bg-bg-secondary/60 p-2 ${compact ? "justify-center" : "gap-2.5"}`}>
+          <span className="relative grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-xl bg-sidebar-hover text-xs font-semibold text-accent">
+            {user.imageUrl ? <Image src={user.imageUrl} alt="" fill className="object-cover" /> : user.displayName?.slice(0, 1).toUpperCase() || "U"}
+            <PresenceDot status={user.status} />
+          </span>
+          {!compact && (
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[12px] font-semibold text-text-primary">{user.displayName || "User"}</p>
+                <p className="truncate text-[9px] text-text-muted">{user.email}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                aria-label="Sign out"
+                className="grid h-8 w-8 place-items-center rounded-lg text-text-muted transition-colors hover:bg-rose-500/10 hover:text-rose-400"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
+            </>
           )}
         </div>
+      </div>
+    </>
+  );
 
-        {/* ── User Footer ─────────────────────────── */}
-        <div className="border-t border-border-subtle p-3 flex-shrink-0">
-          <div className={`flex items-center gap-2.5 ${sidebarCollapsed ? "justify-center" : ""}`}>
-            {/* Avatar */}
-            <div className="relative flex-shrink-0">
-              <div className="w-8 h-8 rounded-xl overflow-hidden border border-border-subtle">
-                {user.imageUrl ? (
-                  <Image src={user.imageUrl} alt={user.displayName || "User"} width={32} height={32} className="object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-sidebar-hover flex items-center justify-center text-[12px] font-bold text-accent">
-                    {user.displayName?.[0]?.toUpperCase() || "U"}
-                  </div>
-                )}
-              </div>
-              <div
-                className="avatar-status online"
-                style={{ width: "9px", height: "9px", border: "2px solid var(--sidebar-bg)" }}
-              />
-            </div>
+  return (
+    <>
+      <aside className={`relative z-30 hidden h-screen shrink-0 flex-col border-r border-border-subtle bg-sidebar transition-[width] duration-200 md:flex ${sidebarCollapsed ? "w-[72px]" : "w-[252px]"}`}>
+        {renderContent(sidebarCollapsed)}
+      </aside>
 
-            {!sidebarCollapsed && (
-              <>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-text-primary truncate leading-tight">
-                    {user.displayName || "User"}
-                  </p>
-                  <p className="text-[10px] text-text-muted truncate">{user.email}</p>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  title="Sign out"
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-destructive hover:bg-destructive/10 transition-all flex-shrink-0"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </>
-            )}
-          </div>
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <button className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={toggleSidebar} aria-label="Close navigation" />
+          <aside className="relative flex h-full w-[286px] flex-col border-r border-border bg-sidebar shadow-2xl">
+            {renderContent(false, true)}
+          </aside>
         </div>
-      </motion.aside>
-
-      {/* ── Mobile Sidebar Drawer ── */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              onClick={toggleSidebar}
-              className="fixed inset-0 bg-black z-40 md:hidden"
-            />
-            {/* Drawer Content */}
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-72 bg-sidebar border-r border-border-subtle z-50 md:hidden flex flex-col select-none"
-            >
-              {/* Brand Header */}
-              <div className="h-[60px] px-4 flex items-center justify-between border-b border-border-subtle flex-shrink-0">
-                <Link href="/" className="flex items-center gap-2.5 group" onClick={toggleSidebar}>
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-accent shadow-lg shadow-accent/20 flex-shrink-0">
-                    <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
-                  </div>
-                  <span className="text-[15px] font-bold tracking-tight text-text-primary leading-none">
-                    Sync<span className="text-gradient">Space</span>
-                  </span>
-                </Link>
-                <button
-                  onClick={toggleSidebar}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-text-secondary hover:bg-sidebar-hover transition-all"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Nav Items */}
-              <div className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-                {navItems.map((item) => {
-                  const isActive =
-                    pathname === item.href ||
-                    (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
-                  const Icon = item.icon;
-
-                  const totalUnreads = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
-                  return (
-                    <Link
-                      key={item.label}
-                      href={item.href}
-                      onClick={toggleSidebar}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-[9px] transition-all duration-150 group ${
-                        isActive
-                          ? "bg-sidebar-active text-accent font-semibold"
-                          : "text-text-secondary hover:bg-sidebar-hover hover:text-text-primary"
-                      }`}
-                    >
-                      <Icon
-                        className={`w-[18px] h-[18px] flex-shrink-0 transition-all ${
-                          isActive ? "text-accent" : "text-text-muted group-hover:text-text-secondary"
-                        }`}
-                      />
-                      <span className="text-[13.5px] flex-1 truncate">{item.label}</span>
-                      {item.label === "Messages" && totalUnreads > 0 && (
-                        <span className="badge text-[10px] bg-accent text-white">{totalUnreads}</span>
-                      )}
-                    </Link>
-                  );
-                })}
-
-                {/* DM List */}
-                {conversations.length > 0 && (
-                  <div className="pt-5 mt-2 border-t border-border-subtle">
-                    <p className="px-3 mb-2 section-label">Direct Messages</p>
-                    <div className="space-y-0.5">
-                      {conversations.map((convo) => {
-                        const isDirect = convo.type === "DIRECT";
-                        const partner = convo.members.find((m: any) => m.userId !== user.id)?.user;
-                        const displayName = isDirect ? partner?.displayName || "User" : convo.name || "Group";
-                        const status = isDirect ? partner?.status?.toLowerCase() : null;
-                        const initials = displayName[0]?.toUpperCase() || "U";
-                        const isActive = pathname === `/dashboard/messages/${convo.id}`;
-
-                        return (
-                          <Link
-                            key={convo.id}
-                            href={`/dashboard/messages/${convo.id}`}
-                            onClick={toggleSidebar}
-                            className={`flex items-center gap-2.5 px-3 py-2 rounded-[9px] transition-all text-[13px] ${
-                              isActive
-                                ? "bg-sidebar-active text-accent font-semibold"
-                                : "text-text-secondary hover:bg-sidebar-hover hover:text-text-primary"
-                            }`}
-                          >
-                            <div className="relative flex-shrink-0">
-                              <div className="w-6 h-6 rounded-lg bg-sidebar-hover flex items-center justify-center text-[10px] font-bold text-accent border border-border-subtle">
-                                {initials}
-                              </div>
-                              {status && (
-                                <div
-                                  className={`avatar-status ${status}`}
-                                  style={{ width: "7px", height: "7px", border: "1.5px solid var(--sidebar-bg)" }}
-                                />
-                              )}
-                            </div>
-                            <span className="truncate flex-1">{displayName}</span>
-                            {convo.unreadCount > 0 && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0 animate-pulse" />
-                            )}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* User Footer */}
-              <div className="border-t border-border-subtle p-3 flex-shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <div className="relative flex-shrink-0">
-                    <div className="w-8 h-8 rounded-xl overflow-hidden border border-border-subtle">
-                      {user.imageUrl ? (
-                        <Image src={user.imageUrl} alt={user.displayName || "User"} width={32} height={32} className="object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-sidebar-hover flex items-center justify-center text-[12px] font-bold text-accent">
-                          {user.displayName?.[0]?.toUpperCase() || "U"}
-                        </div>
-                      )}
-                    </div>
-                    <div
-                      className="avatar-status online"
-                      style={{ width: "9px", height: "9px", border: "2px solid var(--sidebar-bg)" }}
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold text-text-primary truncate leading-tight">
-                      {user.displayName || "User"}
-                    </p>
-                    <p className="text-[10px] text-text-muted truncate">{user.email}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      toggleSidebar();
-                    }}
-                    title="Sign out"
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-destructive hover:bg-destructive/10 transition-all flex-shrink-0"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      )}
     </>
   );
 }
